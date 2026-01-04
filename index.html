@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#ef4444" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Just Knock" />
+    <title>Just Knock</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg" sizes="any">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              gray: {
+                750: '#2d3748',
+                850: '#1a202c',
+                950: '#0f172a', // Deeper dark for background
+              }
+            },
+            keyframes: {
+                shimmer: {
+                    '0%': { transform: 'translateX(-100%)' },
+                    '100%': { transform: 'translateX(100%)' }
+                },
+                pop: {
+                    '0%': { transform: 'scale(0)' },
+                    '70%': { transform: 'scale(1.5)' },
+                    '100%': { transform: 'scale(1)' }
+                }
+            },
+            animation: {
+                shimmer: 'shimmer 2.5s infinite linear',
+                pop: 'pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { 
+        font-family: 'Inter', sans-serif;
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .leaflet-container { width: 100%; height: 100%; }
+
+      /* Theme Colors */
+      [data-theme='marvel'] body { background-color: #f8fafc !important; color: #1e293b; } /* White/Slate */
+      [data-theme='batman'] body { background-color: #121212 !important; color: #d1d5db; } /* Dark Grey */
+      [data-theme='elsa'] body { background-color: #f0f9ff !important; color: #155e75; } /* Light Blue */
+
+      /* Character specific FAB water logic is handled via props in App.tsx */
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "leaflet": "https://esm.sh/leaflet@^1.9.4"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+  </body>
+</html>
