@@ -381,19 +381,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {categories.map(cat => (
-                  <div key={cat} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl group">
-                    <div className="flex items-center gap-3">
-                        <div className="p-1.5 bg-white dark:bg-gray-600 rounded-lg border border-gray-100 dark:border-gray-500">
-                            <CategoryIcon category={cat} className="w-4 h-4 text-gray-500 dark:text-gray-300" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{cat}</span>
-                    </div>
-                    <button onClick={() => onRemoveCategory(cat)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                      <Trash2 className="w-4 h-4" />
+                  <span key={cat} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2 group border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-all">
+                    <CategoryIcon category={cat} className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                    {cat}
+                    <button onClick={() => onRemoveCategory(cat)} className="ml-1 text-gray-400 hover:text-red-500 transition-colors">
+                      <X className="w-3 h-3" />
                     </button>
-                  </div>
+                  </span>
                 ))}
               </div>
             </div>

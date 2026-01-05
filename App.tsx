@@ -35,11 +35,11 @@ const LiquidBucket = ({ theme, isFab = false, percent = 50 }: { theme: Theme | '
         batman: { 
             liquid: "#EAB308", // Yellow 500
             bg: "#111827", 
-            stroke: "#374151", 
+            stroke: "#374151", // Gray 700
             text: "#FFFFFF"
         },
         elsa: { 
-            liquid: "#22D3EE", // Cyan 400
+            liquid: "#F97316", // Orange 500 (Secondary Color)
             bg: isFab ? "#F0F9FF" : "transparent", 
             stroke: "#0891B2", // Cyan 600
             text: "#0E7490" 
@@ -64,8 +64,9 @@ const LiquidBucket = ({ theme, isFab = false, percent = 50 }: { theme: Theme | '
 
     const uniqueId = `mask-${isFab ? 'fab' : 'head'}-${activeKey}-${Math.random().toString(36).substr(2, 5)}`;
 
-    // Text Color Logic: White if submerged in red liquid (Header), or style.text
-    const textFill = !isFab && (activeKey === 'brand-red' || activeKey === 'marvel') && fillP >= 40 
+    // Text Color Logic: White if submerged in liquid (Header), or style.text
+    // Added 'elsa' to whitelist for white text when submerged
+    const textFill = !isFab && (activeKey === 'brand-red' || activeKey === 'marvel' || activeKey === 'elsa') && fillP >= 40 
         ? '#FFFFFF' 
         : style.text;
 
@@ -191,6 +192,7 @@ function App() {
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
   const [completingItemId, setCompletingItemId] = useState<string | null>(null);
 
+  // We use this to track notifications per session
   const notifiedItemsRef = useRef<Set<string>>(new Set());
 
   // --- Initialization ---
@@ -216,6 +218,19 @@ function App() {
             setTheme('marvel');
         } else {
             setTheme(storedTheme);
+        }
+    }
+
+    // Load Notifications with 24h Expiry Logic (Smart Notification)
+    const storedNotifs = localStorage.getItem('jk_notifications');
+    if (storedNotifs) {
+        try {
+            const parsed = JSON.parse(storedNotifs);
+            const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+            const valid = parsed.filter((n: AppNotification) => n.timestamp > oneDayAgo);
+            setNotifications(valid);
+        } catch (e) {
+            console.error("Failed to parse notifications", e);
         }
     }
 
@@ -252,6 +267,11 @@ function App() {
       }
   }, [items, familyMembers, categories, interests, theme]);
 
+  // Persist Notifications whenever they change
+  useEffect(() => {
+      localStorage.setItem('jk_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
   // Focus search input when opened
   useEffect(() => {
       if (isSearchOpen && searchInputRef.current) {
@@ -259,25 +279,64 @@ function App() {
       }
   }, [isSearchOpen]);
 
-  // --- Logic: Proximity Radar ---
+  // --- Logic: Smart Proximity Radar ---
   useEffect(() => {
       if (!isRadarEnabled || !userLocation) return;
-      items.forEach(item => {
-          if (item.completed || !item.coordinates) return;
-          const distance = calculateDistance(userLocation, item.coordinates);
-          if (distance <= proximityRange && !notifiedItemsRef.current.has(item.id)) {
-              notifiedItemsRef.current.add(item.id);
-              sendNotification(`Near ${item.title}! 📍`, `You're ${(distance/1000).toFixed(1)}km away!`, item.id);
-              speak(`Heads up! You are near ${item.title}`);
-              triggerHaptic('heavy');
-              setNotifications(prev => [{
-                  id: crypto.randomUUID(), title: `Near ${item.title}`, message: 'Tap to view route', 
-                  timestamp: Date.now(), read: false, type: 'location', relatedItemId: item.id
-              }, ...prev]);
-          } else if (distance > proximityRange + 1000) {
-              notifiedItemsRef.current.delete(item.id);
-          }
-      });
+
+      const checkProximity = () => {
+         // Load notification history to prevent spamming across sessions
+         const historyStr = localStorage.getItem('jk_notify_history');
+         const history = historyStr ? JSON.parse(historyStr) : {};
+         const now = Date.now();
+         const COOLDOWN = 24 * 60 * 60 * 1000; // 24 Hours
+
+         items.forEach(item => {
+            if (item.completed || !item.coordinates) return;
+            
+            const distance = calculateDistance(userLocation, item.coordinates);
+            const lastNotified = history[item.id] || 0;
+
+            // Condition: Within range AND (Not notified in last 24h)
+            if (distance <= proximityRange) {
+                if (now - lastNotified > COOLDOWN) {
+                    
+                    // 1. Voice Announcement
+                    speak(`Guess what? You are near ${item.title}`);
+                    
+                    // 2. System Notification
+                    sendNotification(`Near ${item.title}! 📍`, `You're ${(distance/1000).toFixed(1)}km away!`, item.id);
+                    
+                    // 3. Haptics
+                    triggerHaptic('heavy');
+
+                    // 4. App Internal Notification State
+                    setNotifications(prev => [{
+                        id: crypto.randomUUID(), 
+                        title: `Near ${item.title}`, 
+                        message: `You are ${(distance/1000).toFixed(1)}km away. Go knock it!`, 
+                        timestamp: now, 
+                        read: false, 
+                        type: 'location', 
+                        relatedItemId: item.id
+                    }, ...prev]);
+
+                    // 5. Update History
+                    history[item.id] = now;
+                    notifiedItemsRef.current.add(item.id); // Update session ref
+                }
+            } else if (distance > proximityRange + 2000) {
+                 // Optional: Could reset cooldown if they move far away, but for now we keep strict 24h
+            }
+         });
+         
+         localStorage.setItem('jk_notify_history', JSON.stringify(history));
+      };
+      
+      checkProximity();
+      
+      const interval = setInterval(checkProximity, 10000); // Check every 10s
+      return () => clearInterval(interval);
+
   }, [userLocation, items, isRadarEnabled, proximityRange]);
 
   // --- Theme Styles Logic ---
@@ -288,7 +347,7 @@ function App() {
                   headerWrapper: 'bg-white', // Main header container is white to support split color
                   
                   // Top Row (Logo, Profile)
-                  topRowBg: 'bg-[#1e3a8a]', // Dark Blue
+                  topRowBg: 'bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900', // Dark Blue Gradient
                   topRowText: 'text-white',
                   topRowBorder: 'border-b-2 border-red-600', // Reduced Red Separator
                   
@@ -316,15 +375,19 @@ function App() {
                   
                   // Circular Header Buttons
                   headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm',
-                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all box-border shadow-sm'
+                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all box-border shadow-sm',
+
+                  // FAB
+                  fabIcon: 'text-red-500',
+                  fabBorder: 'border-blue-900'
               };
           case 'elsa':
               return {
-                  headerWrapper: 'bg-[#f0f9ff]',
+                  headerWrapper: 'bg-cyan-50',
                   
-                  topRowBg: 'bg-[#f0f9ff]',
+                  topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', // Icy Gradient
                   topRowText: 'text-cyan-900',
-                  topRowBorder: 'border-b-2 border-cyan-300', // Reduced Light Blue
+                  topRowBorder: 'border-b-2 border-orange-400', // Updated: Orange Header Line
                   
                   progressRowBg: 'bg-[#f0f9ff]',
                   
@@ -334,25 +397,31 @@ function App() {
                   toolbarHover: 'hover:bg-cyan-100',
                   toolbarActive: 'bg-cyan-100',
 
-                  progressActive: 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-300 text-white shadow-[0_0_15px_rgba(34,211,238,0.6)]',
-                  progressInactive: 'bg-gradient-to-r from-sky-200 via-sky-100 to-sky-50 text-sky-700 hover:from-sky-200 hover:to-sky-100',
+                  // Updated Colors: Orange for Completed/Active, Light Blue for Inactive
+                  progressActive: 'bg-gradient-to-r from-orange-500 via-orange-400 to-orange-300 text-white shadow-[0_0_15px_rgba(249,115,22,0.6)]',
+                  progressInactive: 'bg-gradient-to-r from-cyan-200 via-cyan-100 to-cyan-50 text-cyan-800 hover:from-cyan-200 hover:to-cyan-100',
                   
                   tabGroupBg: 'bg-cyan-50 border-cyan-100',
-                  tabActive: 'bg-white text-cyan-600 shadow-sm border border-cyan-100',
+                  tabActive: 'bg-white text-orange-600 shadow-sm border border-cyan-100',
                   tabInactive: 'text-cyan-400 hover:text-cyan-600',
                   
-                  iconPrimary: 'text-cyan-600',
-                  iconSecondary: 'text-sky-500',
+                  iconPrimary: 'text-orange-500', 
+                  iconSecondary: 'text-cyan-500',
                   
-                  headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-cyan-200 bg-white/40 text-cyan-700 hover:bg-white/60 transition-all backdrop-blur-sm',
-                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-cyan-200 hover:border-cyan-400 transition-all box-border shadow-sm'
+                  // Updated: Orange Borders for Right Corner Icons
+                  headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60 transition-all backdrop-blur-sm',
+                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 transition-all box-border shadow-sm',
+
+                  // FAB
+                  fabIcon: 'text-orange-500',
+                  fabBorder: 'border-cyan-600'
               };
           case 'batman':
           default:
               return {
                   headerWrapper: 'bg-[#0f172a]',
 
-                  topRowBg: 'bg-[#0f172a]',
+                  topRowBg: 'bg-gradient-to-r from-gray-900 via-black to-gray-900', // Dark Stealth Gradient
                   topRowText: 'text-white',
                   topRowBorder: 'border-b-2 border-yellow-500', // Reduced Yellow
 
@@ -375,13 +444,24 @@ function App() {
                   iconSecondary: 'text-yellow-500',
                   
                   headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-all',
-                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 transition-all box-border shadow-sm'
+                  headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 transition-all box-border shadow-sm',
+
+                  // FAB
+                  fabIcon: 'text-yellow-500',
+                  fabBorder: 'border-gray-700'
               };
       }
   }, [theme]);
 
   // Helper for hover states on dark vs light backgrounds
   const topRowHoverClass = (theme === 'marvel' || theme === 'batman') ? 'hover:bg-white/10' : 'hover:bg-black/5';
+
+  // Helper for version badge styles
+  const getVersionBadgeClass = () => {
+      if (theme === 'marvel') return 'bg-blue-950 text-blue-200 border-blue-800';
+      if (theme === 'elsa') return 'bg-orange-100 text-orange-600 border-orange-300';
+      return 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500';
+  };
 
   // --- Logic: Filtering & Sorting ---
 
@@ -527,12 +607,13 @@ function App() {
                             className="w-12 h-12 cursor-pointer relative"
                             onClick={() => setIsChangelogOpen(true)}
                          >
+                            {/* FORCE RED THEME FOR HEADER LOGO TO MAINTAIN BRAND CONSISTENCY */}
                             <LiquidBucket theme="brand-red" percent={50} />
                          </div>
                          {/* Version Badge - Next to bucket - TOP ALIGNED */}
                          <button 
                            onClick={(e) => { e.stopPropagation(); setIsChangelogOpen(true); }}
-                           className={`px-1.5 py-0.5 rounded-md ${theme === 'marvel' ? 'bg-blue-950 text-blue-200 border-blue-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'} border text-[9px] font-bold transition-colors shadow-sm mt-0 -ml-1.5 z-10`}
+                           className={`px-1.5 py-0.5 rounded-md ${getVersionBadgeClass()} border text-[9px] font-bold transition-colors shadow-sm mt-0 -ml-1.5 z-10`}
                         >
                            {APP_VERSION}
                         </button>
@@ -776,11 +857,25 @@ function App() {
                 ) : (
                     <div className="space-y-4">
                         {displayItems.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                                <Filter className="w-12 h-12 text-gray-300 mb-2" />
-                                <p className="text-sm font-medium text-gray-500">
-                                    {searchQuery ? `No matches for "${searchQuery}"` : "No dreams match your filters."}
-                                </p>
+                            <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                                {items.length === 0 ? (
+                                    <div className="animate-in zoom-in duration-500 flex flex-col items-center opacity-80">
+                                        <div className="w-40 h-40 mb-4 opacity-60">
+                                           <LiquidBucket theme={theme} percent={15} />
+                                        </div>
+                                        <h3 className="text-xl font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Your bucket is empty</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
+                                            The adventure of a lifetime begins with a single wish. <br/>Tap <span className="font-bold text-red-500">+</span> to start your journey.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center opacity-50 py-4">
+                                        <Filter className="w-12 h-12 text-gray-300 mb-2" />
+                                        <p className="text-sm font-medium text-gray-500">
+                                            {searchQuery ? `No matches for "${searchQuery}"` : "No dreams match your filters."}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             displayItems.map(item => (
@@ -832,8 +927,8 @@ function App() {
                 className="fixed bottom-8 right-6 z-40 w-24 h-24 transition-transform hover:scale-105 active:scale-95 group"
             >
                 <LiquidBucket theme={theme} isFab={true} percent={stats.percent} />
-                <div className="absolute top-0 right-0 bg-white dark:bg-slate-800 rounded-full p-1 shadow-md border border-gray-100 dark:border-gray-700">
-                <Plus className="w-4 h-4 text-red-500 stroke-[3]" />
+                <div className={`absolute top-0 right-0 bg-white dark:bg-slate-800 rounded-full p-1 shadow-md border-2 ${themeStyles.fabBorder}`}>
+                <Plus className={`w-6 h-6 ${themeStyles.fabIcon} stroke-[3]`} />
                 </div>
             </button>
         )}
@@ -848,7 +943,8 @@ function App() {
             items={items} 
             initialData={editingItem} 
             mode={editingItem ? 'edit' : 'add'} 
-            editingId={editingItem?.id} 
+            editingId={editingItem?.id}
+            theme={theme} 
         />
         
         <SettingsModal 

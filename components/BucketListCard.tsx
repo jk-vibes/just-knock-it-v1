@@ -93,13 +93,13 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                   card: 'bg-gradient-to-br from-white/95 via-cyan-50/20 to-sky-100/30 border-cyan-100 shadow-cyan-100/50',
                   text: 'text-cyan-950',
                   subText: 'text-cyan-600/80',
-                  checkChecked: 'text-cyan-500',
-                  checkUnchecked: 'border-cyan-300 hover:border-cyan-500',
+                  checkChecked: 'text-orange-500', // Orange check for completed items
+                  checkUnchecked: 'border-cyan-300 hover:border-orange-400',
                   pill: 'bg-cyan-50/50 border-cyan-100 text-cyan-700',
-                  tagPill: 'bg-sky-50 text-sky-600 border-sky-100',
+                  tagPill: 'bg-orange-50 text-orange-600 border-orange-100', // Orange tags
                   interestPill: 'text-cyan-600 bg-cyan-50/50 border-cyan-100',
-                  icon: 'text-cyan-500',
-                  shareBtn: 'text-cyan-500 bg-cyan-50 hover:bg-cyan-100',
+                  icon: 'text-orange-500', // Orange icons (Map pin)
+                  shareBtn: 'text-orange-500 bg-orange-50 hover:bg-orange-100', // Orange action button
                   navBtn: 'bg-sky-50 border-sky-100 text-sky-600 hover:bg-sky-100',
                   imgBtn: 'bg-indigo-50 border-indigo-100 text-indigo-500 hover:bg-indigo-100',
                   titleCompleted: 'text-cyan-900/40'

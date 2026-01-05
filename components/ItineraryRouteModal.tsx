@@ -36,7 +36,7 @@ const RouteMap = ({
     // Color Palette based on theme
     const themeColor = useMemo(() => {
         if (theme === 'marvel') return '#EF4444';
-        if (theme === 'elsa') return '#06b6d4';
+        if (theme === 'elsa') return '#F97316'; // Orange 500 for Frozen
         return '#f59e0b'; // Batman/Default
     }, [theme]);
 
@@ -281,12 +281,12 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
             header: 'bg-white/80 backdrop-blur-md border-cyan-100',
             text: 'text-cyan-950',
             textDim: 'text-cyan-600/70',
-            accent: 'text-cyan-600',
+            accent: 'text-orange-600', // Orange Accent
             border: 'border-cyan-100',
             line: 'bg-cyan-200',
-            dot: 'bg-cyan-500 border-white',
+            dot: 'bg-orange-500 border-white', // Orange Dot
             badge: orange.elsa,
-            btnPrimary: 'bg-cyan-500 hover:bg-cyan-600 text-white shadow-cyan-500/20',
+            btnPrimary: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20', // Orange Button
             btnGhost: 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100',
             cardHover: 'hover:border-cyan-200 hover:shadow-cyan-500/5',
         };
