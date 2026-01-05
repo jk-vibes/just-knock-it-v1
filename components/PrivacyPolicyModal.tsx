@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Shield, Lock, Eye, Server, MapPin, HardDrive } from 'lucide-react';
 
@@ -64,7 +65,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
           </section>
 
           <div className="pt-6 border-t border-gray-100 dark:border-gray-700 text-center">
-            <p className="text-[10px] text-gray-400">Last updated: May 20, 2024</p>
+            <p className="text-[10px] text-gray-400">Last updated: May 2024</p>
           </div>
         </div>
       </div>

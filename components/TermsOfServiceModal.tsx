@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Scale, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
 
@@ -41,4 +42,28 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen
             <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow-500" /> 3. Responsible Use of Location
             </h3>
-            <p>The application provides location-based alerts. You agree to use these
+            <p>The application provides location-based alerts. You agree to use these features responsibly and follow all local laws. Do not use the app while driving or in any situation where full attention is required for safety.</p>
+          </section>
+
+          <section>
+            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-500" /> 4. Limitations of Service
+            </h3>
+            <p>Just Knock provides information and suggestions via the Google Gemini API. We do not guarantee the accuracy of location data, opening hours, or accessibility of any suggested destination. Use of the service is at your own risk.</p>
+          </section>
+
+          <section>
+            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-blue-500" /> 5. Data Privacy
+            </h3>
+            <p>Your use of the application is also governed by our Privacy Policy. By using the App, you consent to the storage of your bucket list data in your own Google Drive and on your local device.</p>
+          </section>
+
+          <div className="pt-6 border-t border-gray-100 dark:border-gray-700 text-center">
+            <p className="text-[10px] text-gray-400">Last updated: May 2024</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

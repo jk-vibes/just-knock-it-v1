@@ -1,0 +1,15 @@
+
+{
+  "appId": "com.justknock.app",
+  "appName": "Just Knock",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}

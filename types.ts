@@ -10,7 +10,7 @@ export interface ItineraryItem {
   completed?: boolean;
   coordinates?: Coordinates;
   isImportant?: boolean;
-  images?: string[]; // Array of image URLs
+  images?: string[]; 
   category?: string;
   interests?: string[];
   bestVisitingTime?: string;
@@ -26,12 +26,14 @@ export interface BucketItem {
   id: string;
   title: string;
   description: string;
+  type: 'destination' | 'roadtrip' | 'goal';
   locationName?: string;
   coordinates?: Coordinates;
-  images?: string[]; // Array of image URLs
+  images?: string[];
   completed: boolean;
-  completedAt?: number; // Timestamp when item was completed
+  completedAt?: number;
   createdAt: number;
+  dueDate?: number;
   category?: string;
   interests?: string[];
   owner?: string;
@@ -43,15 +45,17 @@ export interface BucketItem {
 export interface BucketItemDraft {
   title: string;
   description: string;
+  type: 'destination' | 'roadtrip' | 'goal';
   locationName?: string;
   latitude?: number;
   longitude?: number;
-  images?: string[]; // Array of image URLs
+  images?: string[];
   category?: string;
   interests?: string[];
   owner?: string;
   isCompleted?: boolean;
   completedAt?: number;
+  dueDate?: number;
   bestTimeToVisit?: string;
   itinerary?: ItineraryItem[];
   roadTrip?: RoadTripDetails;
@@ -63,17 +67,21 @@ export interface AppNotification {
   message: string;
   timestamp: number;
   read: boolean;
-  type: 'location' | 'system' | 'info';
+  type: 'location' | 'system' | 'info' | 'insight';
   relatedItemId?: string;
 }
 
-export enum AppView {
-  LIST = 'LIST',
-  ADD = 'ADD',
-  MAP = 'MAP'
-}
-
 export type Theme = 'marvel' | 'batman' | 'elsa';
+export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';
+
+export interface AppSettings {
+  theme: Theme;
+  proximityRange: number;
+  travelMode: TravelMode;
+  notificationsEnabled: boolean;
+  voiceAlertsEnabled: boolean;
+  autoBackupEnabled: boolean;
+}
 
 export interface User {
   id: string;
@@ -81,3 +89,5 @@ export interface User {
   email: string;
   photoUrl: string;
 }
+
+export type ActiveTab = 'list' | 'map' | 'stats';

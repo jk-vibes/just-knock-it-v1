@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -25,7 +26,7 @@
               gray: {
                 750: '#2d3748',
                 850: '#1a202c',
-                950: '#0f172a', // Deeper dark for background
+                950: '#0f172a',
               }
             },
             keyframes: {
@@ -34,14 +35,40 @@
                     '100%': { transform: 'translateX(100%)' }
                 },
                 pop: {
-                    '0%': { transform: 'scale(0)' },
-                    '70%': { transform: 'scale(1.5)' },
-                    '100%': { transform: 'scale(1)' }
+                    '0%': { transform: 'scale(0.8)', opacity: '0' },
+                    '70%': { transform: 'scale(1.05)', opacity: '1' },
+                    '100%': { transform: 'scale(1)', opacity: '1' }
+                },
+                shake: {
+                    '0%, 100%': { transform: 'translateX(0)' },
+                    '25%': { transform: 'translateX(-5px)' },
+                    '75%': { transform: 'translateX(5px)' }
+                },
+                float: {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-10px)' }
+                },
+                'slide-up': {
+                    '0%': { transform: 'translateY(20px)', opacity: '0' },
+                    '100%': { transform: 'translateY(0)', opacity: '1' }
+                },
+                'slide-in-right': {
+                    '0%': { transform: 'translateX(30px)', opacity: '0' },
+                    '100%': { transform: 'translateX(0)', opacity: '1' }
+                },
+                'fade-in-scale': {
+                    '0%': { transform: 'scale(0.95)', opacity: '0' },
+                    '100%': { transform: 'scale(1)', opacity: '1' }
                 }
             },
             animation: {
                 shimmer: 'shimmer 2.5s infinite linear',
-                pop: 'pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                pop: 'pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                shake: 'shake 0.3s ease-in-out',
+                float: 'float 6s ease-in-out infinite',
+                'slide-up': 'slide-up 0.5s ease-out forwards',
+                'slide-in-right': 'slide-in-right 0.4s ease-out forwards',
+                'fade-in-scale': 'fade-in-scale 0.3s ease-out forwards'
             }
           }
         }
@@ -57,12 +84,15 @@
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       .leaflet-container { width: 100%; height: 100%; }
 
-      /* Theme Colors */
-      [data-theme='marvel'] body { background-color: #f8fafc !important; color: #1e293b; } /* White/Slate */
-      [data-theme='batman'] body { background-color: #121212 !important; color: #d1d5db; } /* Dark Grey */
-      [data-theme='elsa'] body { background-color: #f0f9ff !important; color: #155e75; } /* Light Blue */
+      [data-theme='marvel'] body { background-color: #f8fafc !important; color: #1e293b; }
+      [data-theme='batman'] body { background-color: #121212 !important; color: #d1d5db; }
+      [data-theme='elsa'] body { background-color: #f0f9ff !important; color: #155e75; }
 
-      /* Character specific FAB water logic is handled via props in App.tsx */
+      .stagger-1 { animation-delay: 100ms; }
+      .stagger-2 { animation-delay: 200ms; }
+      .stagger-3 { animation-delay: 300ms; }
+      .stagger-4 { animation-delay: 400ms; }
+      .stagger-5 { animation-delay: 500ms; }
     </style>
 <script type="importmap">
 {

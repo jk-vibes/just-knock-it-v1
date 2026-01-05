@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Car, Navigation, RefreshCw, Hash, Target } from 'lucide-react';
+// Added CheckCircle2 to the imports from lucide-react
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Car, Navigation, RefreshCw, Hash, Target, AlertCircle, Mic, MicOff, CheckCircle2, Flag } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem, generateRoadTripStops, optimizeRouteOrder } from '../services/geminiService';
 import { BucketItemDraft, BucketItem, ItineraryItem, Theme } from '../types';
 import { CategoryIcon } from './CategoryIcon';
+import { triggerHaptic } from '../utils/haptics';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -18,6 +20,9 @@ interface AddItemModalProps {
   theme: Theme;
 }
 
+// Support for different browser implementations of SpeechRecognition
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
 export const AddItemModal: React.FC<AddItemModalProps> = ({ 
   isOpen, onClose, onAdd, categories, availableInterests, initialData, mode = 'add', items, editingId, theme
 }) => {
@@ -27,14 +32,18 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isInspiring, setIsInspiring] = useState(false);
   const [draft, setDraft] = useState<BucketItemDraft | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
   
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [completedDate, setCompletedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [targetDate, setTargetDate] = useState<string>('');
 
   // Ref to track valid async requests. If modal closes, we increment this to "cancel" pending callbacks.
   const requestRef = useRef(0);
+  const recognitionRef = useRef<any>(null);
 
   // Dynamic Theme Styles
   const s = useMemo(() => {
@@ -59,7 +68,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 tagActive: 'bg-orange-500 text-white border-orange-500',
                 tagInactive: 'bg-white text-cyan-600 border-cyan-200 hover:border-cyan-300',
                 backBtn: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200',
-                confirmBtn: 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20'
+                confirmBtn: 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20',
+                micBtn: 'text-orange-500 hover:bg-orange-50',
+                micActive: 'bg-orange-500 text-white ring-orange-200'
             };
         case 'batman':
             return {
@@ -81,7 +92,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 tagActive: 'bg-yellow-500 text-black border-yellow-500',
                 tagInactive: 'bg-[#2a2a2a] text-gray-400 border-gray-700 hover:border-gray-500',
                 backBtn: 'bg-[#2a2a2a] text-gray-400 hover:bg-[#333]',
-                confirmBtn: 'bg-yellow-500 text-black hover:bg-yellow-400 shadow-yellow-500/20'
+                confirmBtn: 'bg-yellow-500 text-black hover:bg-yellow-400 shadow-yellow-500/20',
+                micBtn: 'text-yellow-500 hover:bg-yellow-900/30',
+                micActive: 'bg-yellow-500 text-black ring-yellow-900/40'
             };
         case 'marvel':
         default:
@@ -104,16 +117,61 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 tagActive: 'bg-slate-900 text-white border-slate-900',
                 tagInactive: 'bg-white text-slate-500 border-slate-200 hover:border-slate-300',
                 backBtn: 'bg-slate-100 text-slate-500 hover:bg-slate-200',
-                confirmBtn: 'bg-red-600 text-white hover:bg-red-700 shadow-red-600/20'
+                confirmBtn: 'bg-red-600 text-white hover:bg-red-700 shadow-red-600/20',
+                micBtn: 'text-red-500 hover:bg-red-50',
+                micActive: 'bg-red-600 text-white ring-red-200'
             };
     }
   }, [theme]);
 
+  // Voice Recognition Logic
+  useEffect(() => {
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      triggerHaptic('light');
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      
+      setInput(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+          setValidationError("Microphone access denied. Please enable it in settings.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+    };
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
-        // Reset states whenever modal opens to prevent "stuck" loading states
         setIsAnalyzing(false);
         setIsInspiring(false);
+        setIsListening(false);
+        setValidationError(null);
 
         if (initialData && mode === 'edit') {
             const mappedDraft: BucketItemDraft = { ...initialData };
@@ -125,72 +183,77 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             setSelectedCategory(initialData.category || 'Travel');
             setSelectedInterests(initialData.interests || []);
             setInput(initialData.title);
-            if (initialData.roadTrip) {
-                setTripType('roadtrip');
-                setStartLocation(initialData.roadTrip.startLocation || '');
+            setTargetDate(initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '');
+            
+            // Restore tripType from saved type
+            if (initialData.type) {
+                setTripType(initialData.type);
+                if (initialData.type === 'roadtrip' && initialData.roadTrip) {
+                    setStartLocation(initialData.roadTrip.startLocation || '');
+                }
             } else {
-                setTripType(!(initialData as any).coordinates ? 'goal' : 'destination');
+                // Fallback for legacy items
+                if (initialData.roadTrip) {
+                    setTripType('roadtrip');
+                    setStartLocation(initialData.roadTrip.startLocation || '');
+                } else {
+                    setTripType(!(initialData as any).coordinates ? 'goal' : 'destination');
+                }
             }
         } else if (mode === 'add') {
-            // Clean slate for new item
             setDraft(null); 
             setInput(''); 
             setSelectedCategory('Travel'); 
             setSelectedInterests([]); 
-            setTripType('destination'); 
+            setTripType('destination');
+            setTargetDate('');
         }
     } else {
-        // When closing, invalidate any running requests
         requestRef.current++;
         setIsAnalyzing(false);
         setIsInspiring(false);
+        setIsListening(false);
+        setValidationError(null);
+        if (recognitionRef.current) recognitionRef.current.stop();
     }
   }, [isOpen, initialData, mode]);
 
-  // Sync interests when draft is updated by Magic Fill
   useEffect(() => {
       if (draft && draft.interests) {
           setSelectedInterests(prev => Array.from(new Set([...prev, ...draft.interests!])));
       }
+      setValidationError(null);
   }, [draft]);
 
   const handleMagicFill = async () => {
     if (!input.trim()) return;
-    
-    // Increment request ID to ensure we only handle the latest valid request
     const requestId = ++requestRef.current;
-    
     setIsAnalyzing(true);
-    
+    setValidationError(null);
     try {
         let result: BucketItemDraft | null = null;
-
         if (tripType === 'destination' || tripType === 'goal') {
             result = await analyzeBucketItem(input, categories, tripType);
         } else {
             const stops = await generateRoadTripStops(startLocation || "current location", input);
-            // Check request validity before continuing to expensive optimization
             if (requestRef.current !== requestId) return;
-            
             const optimized = await optimizeRouteOrder(stops);
             result = {
                 title: `Road Trip to ${input}`,
                 description: `A scenic journey from ${startLocation || 'here'} to ${input} with ${optimized.length} stops.`,
+                type: 'roadtrip',
                 locationName: input,
                 category: 'Adventure',
                 interests: ['Road Trip', 'Adventure', 'Driving'],
                 roadTrip: { startLocation, stops: optimized }
             };
         }
-
-        // Only update state if this request is still the active one
         if (requestRef.current === requestId) {
             setDraft(result);
             if (result && result.category) setSelectedCategory(result.category);
             setIsAnalyzing(false);
         }
     } catch (e) {
-        console.error(e);
         if (requestRef.current === requestId) setIsAnalyzing(false);
     }
   };
@@ -198,48 +261,63 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const handleInspireMe = async () => {
       const requestId = ++requestRef.current;
       setIsInspiring(true);
-      
+      setValidationError(null);
       try {
           const result = await suggestBucketItem(categories, input);
-          
           if (requestRef.current === requestId) {
               setDraft(result);
               if (result.category) setSelectedCategory(result.category);
               setIsInspiring(false);
           }
       } catch (e) {
-          console.error(e);
           if (requestRef.current === requestId) setIsInspiring(false);
       }
   };
 
   const handleConfirm = () => {
     if (draft) {
+      const isDuplicate = items.some(item => 
+        item.title.toLowerCase().trim() === draft.title.toLowerCase().trim() && 
+        item.id !== editingId
+      );
+      if (isDuplicate) {
+        setValidationError("This dream is already on your list!");
+        return;
+      }
       const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
+      const targetTimestamp = targetDate ? new Date(targetDate).getTime() : undefined;
       onAdd({
         ...draft,
+        title: draft.title || input,
+        type: tripType, // Ensure selected type is saved
         category: selectedCategory || draft.category,
         interests: selectedInterests,
         isCompleted: isCompleted,
         completedAt: completedTimestamp,
+        dueDate: targetTimestamp,
       });
       onClose();
     }
   };
 
-  const toggleInterest = (interest: string) => {
-      setSelectedInterests(prev => 
-          prev.includes(interest) 
-              ? prev.filter(i => i !== interest)
-              : [...prev, interest]
-      );
+  const toggleVoiceInput = () => {
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in your browser.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setValidationError(null);
+      recognitionRef.current.start();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className={`${s.modalBase} rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border transition-colors duration-300`}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`${s.modalBase} rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border transition-all duration-300`}>
         <div className="p-6 overflow-y-auto no-scrollbar flex-1">
           <div className="flex justify-between items-center mb-1">
             <h2 className={`text-xl font-bold ${s.heading}`}>
@@ -250,122 +328,183 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {!draft ? (
             <div className="space-y-4">
-                
                 <p className={`text-sm leading-relaxed mb-2 ${s.textSecondary}`}>
-                    Type your dream (e.g., "See the Northern Lights" or "Learn Guitar") and let AI fill in the details.
+                    Type your dream and let AI fill in the details.
                 </p>
 
-                <div className="relative">
+                <div className="relative group/input">
                     <textarea 
                         value={input} 
-                        onChange={(e) => setInput(e.target.value)} 
+                        onChange={(e) => { setInput(e.target.value); setValidationError(null); }} 
                         rows={4} 
-                        placeholder={tripType === 'goal' ? "What's your goal? (e.g. Run a Marathon, Learn French...)" : "What's your dream destination?"} 
-                        className={`w-full p-4 rounded-xl border outline-none resize-none transition-all ${s.input}`} 
+                        placeholder={tripType === 'goal' ? "What's your goal?" : "What's your dream destination?"} 
+                        className={`w-full p-4 pr-12 rounded-xl border outline-none resize-none transition-all ${s.input} ${isListening ? 'ring-2 ring-red-500 border-transparent' : ''}`} 
                     />
+                    <button 
+                        onClick={toggleVoiceInput}
+                        className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-300 ${isListening ? `${s.micActive} animate-pulse scale-110` : `${s.micBtn} hover:scale-110`}`}
+                        title={isListening ? "Stop Listening" : "Voice Input"}
+                    >
+                        {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 opacity-60" />}
+                    </button>
                 </div>
 
-                {/* --- Trip Type Toggle --- */}
                 {input.trim().length > 0 && (
                     <div className="flex gap-4 animate-in fade-in slide-in-from-top-1 flex-wrap">
                         <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'destination'} onChange={() => setTripType('destination')} className={`${s.radioAccent}`} />
-                            <MapPin className="w-3 h-3" />
-                            <span>Destination</span>
+                            <input type="radio" checked={tripType === 'destination'} onChange={() => setTripType('destination')} className={s.radioAccent} />
+                            <MapPin className="w-3 h-3" /> <span>Destination</span>
                         </label>
                         <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'roadtrip'} onChange={() => setTripType('roadtrip')} className={`${s.radioAccent}`} />
-                            <Car className="w-3 h-3" />
-                            <span>Road Trip</span>
+                            <input type="radio" checked={tripType === 'roadtrip'} onChange={() => setTripType('roadtrip')} className={s.radioAccent} />
+                            <Car className="w-3 h-3" /> <span>Road Trip</span>
                         </label>
                         <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'goal'} onChange={() => setTripType('goal')} className={`${s.radioAccent}`} />
-                            <Target className="w-3 h-3" />
-                            <span>Goal</span>
+                            <input type="radio" checked={tripType === 'goal'} onChange={() => setTripType('goal')} className={s.radioAccent} />
+                            <Target className="w-3 h-3" /> <span>Goal</span>
                         </label>
                     </div>
                 )}
 
-                {/* --- ACTION BUTTONS --- */}
+                {tripType === 'roadtrip' && (
+                    <div className="animate-in slide-in-from-left duration-300">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Starting From</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input 
+                                type="text" 
+                                value={startLocation}
+                                onChange={(e) => setStartLocation(e.target.value)}
+                                placeholder="City or 'current location'"
+                                className={`w-full pl-9 p-3 rounded-xl border outline-none text-sm transition-all ${s.input}`}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex gap-3 pt-2">
                     <button 
-                        onClick={handleMagicFill} 
-                        disabled={isAnalyzing || !input.trim()} 
-                        className={`flex-1 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent ${s.magicBtn}`}
+                        onClick={handleMagicFill}
+                        disabled={isAnalyzing || !input.trim()}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${s.magicBtn}`}
                     >
-                        {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                        {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         {isAnalyzing ? 'Analyzing...' : 'Magic Fill'}
                     </button>
-                    
                     <button 
-                        onClick={handleInspireMe} 
+                        onClick={handleInspireMe}
                         disabled={isInspiring}
-                        className={`flex-1 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all disabled:opacity-50 ${s.inspireBtn}`}
+                        className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm border transition-all ${s.inspireBtn}`}
                     >
-                        {isInspiring ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lightbulb className="w-5 h-5 fill-current" />}
-                        {isInspiring ? 'Thinking...' : 'Inspire Me'}
+                        {isInspiring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
           ) : (
-            <div className="space-y-6 animate-in slide-in-from-right-4">
-                <div className={`p-5 rounded-3xl border ${s.draftCard}`}>
-                    <h3 className={`font-black text-lg uppercase leading-tight ${s.draftTitle}`}>{draft.title}</h3>
-                    <p className={`text-xs mt-2 leading-relaxed ${s.draftText}`}>{draft.description}</p>
-                    
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        {draft.locationName && <div className={`px-3 py-1.5 bg-black/5 rounded-xl text-[10px] font-bold border border-black/10 flex items-center gap-1.5 ${s.draftTitle}`}><MapPin className="w-3 h-3" /> {draft.locationName}</div>}
-                        {draft.roadTrip && <div className={`px-3 py-1.5 bg-black/5 rounded-xl text-[10px] font-bold border border-black/10 flex items-center gap-1.5 ${s.draftTitle}`}><Navigation className="w-3 h-3" /> {draft.roadTrip.stops.length} Stops Planned</div>}
-                        {!draft.locationName && !draft.roadTrip && <div className={`px-3 py-1.5 bg-black/5 rounded-xl text-[10px] font-bold border border-black/10 flex items-center gap-1.5 ${s.draftTitle}`}><Target className="w-3 h-3" /> Goal</div>}
+            <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                <div className={`p-4 rounded-2xl border transition-all duration-500 ${s.draftCard}`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className={`text-lg font-black leading-tight ${s.draftTitle}`}>{draft.title}</h3>
+                        <MapPin className="w-5 h-5 text-red-500" />
                     </div>
+                    <p className={`text-xs leading-relaxed ${s.draftText}`}>{draft.description}</p>
                 </div>
 
                 <div>
-                    <label className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${s.textSecondary}`}>Category</label>
+                    <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Category</h4>
                     <div className="grid grid-cols-4 gap-2">
                         {categories.slice(0, 8).map(cat => (
                             <button 
                                 key={cat} 
-                                onClick={() => setSelectedCategory(cat)} 
-                                className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 ${selectedCategory === cat ? s.catActive : s.catInactive}`}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-[9px] font-bold transition-all ${selectedCategory === cat ? s.catActive : s.catInactive}`}
                             >
-                                <CategoryIcon category={cat} className="w-5 h-5" />
-                                <span className="text-[8px] font-black uppercase text-center truncate w-full">{cat}</span>
+                                <CategoryIcon category={cat} className="w-4 h-4" />
+                                <span className="truncate w-full text-center">{cat}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
                 <div>
-                    <label className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${s.textSecondary}`}>Interests & Tags</label>
+                    <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Interests</h4>
                     <div className="flex flex-wrap gap-2">
-                        {availableInterests.map(interest => (
+                        {availableInterests.map(int => (
                             <button 
-                                key={interest} 
-                                onClick={() => toggleInterest(interest)}
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${selectedInterests.includes(interest) ? s.tagActive : s.tagInactive}`}
+                                key={int}
+                                onClick={() => {
+                                    setSelectedInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int]);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${selectedInterests.includes(int) ? s.tagActive : s.tagInactive}`}
                             >
-                                #{interest}
-                            </button>
-                        ))}
-                        {selectedInterests.filter(i => !availableInterests.includes(i)).map(interest => (
-                             <button 
-                                key={interest} 
-                                onClick={() => toggleInterest(interest)}
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${s.tagActive}`}
-                            >
-                                #{interest}
+                                #{int}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="flex gap-4">
-                    <button onClick={() => { setDraft(null); }} className={`flex-1 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-colors ${s.backBtn}`}>Back</button>
-                    <button onClick={handleConfirm} className={`flex-1 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-colors ${s.confirmBtn}`}>Confirm</button>
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg bg-blue-500/10 text-blue-600`}>
+                                <Flag className="w-4 h-4" />
+                            </div>
+                            <span className={`text-xs font-bold ${s.textPrimary}`}>Target Date</span>
+                        </div>
+                        <input 
+                            type="date" 
+                            value={targetDate} 
+                            onChange={(e) => setTargetDate(e.target.value)} 
+                            className={`p-2 rounded-xl border outline-none text-[10px] ${s.input}`} 
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg bg-green-500/10 text-green-600`}>
+                                <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                            <span className={`text-xs font-bold ${s.textPrimary}`}>Knocked it out?</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked={isCompleted} onChange={(e) => setIsCompleted(e.target.checked)} className="sr-only peer" />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                    {isCompleted && (
+                        <div className="animate-in slide-in-from-top duration-300">
+                            <input type="date" value={completedDate} onChange={(e) => setCompletedDate(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${s.input}`} />
+                        </div>
+                    )}
                 </div>
             </div>
           )}
+
+          {validationError && (
+              <div className="mt-4 p-3 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center gap-2 text-xs font-bold animate-shake">
+                  <AlertCircle className="w-4 h-4" />
+                  {validationError}
+              </div>
+          )}
+        </div>
+
+        <div className={`p-6 border-t ${s.border} shrink-0 bg-white/50 dark:bg-black/20 backdrop-blur-sm`}>
+            <div className="flex gap-3">
+                {draft ? (
+                    <>
+                        <button onClick={() => setDraft(null)} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
+                            Change Details
+                        </button>
+                        <button onClick={handleConfirm} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.confirmBtn}`}>
+                            Just Knock It
+                        </button>
+                    </>
+                ) : (
+                    <button onClick={onClose} className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
+                        Cancel
+                    </button>
+                )}
+            </div>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as L from 'leaflet';
 import { ArrowLeft, MapPin, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Footprints, MoreVertical, Zap, Flag, GripVertical, Star, Clock, X, Info, Circle, CheckCircle2 } from 'lucide-react';
-import { BucketItem, Coordinates, ItineraryItem, Theme } from '../types';
+import { BucketItem, Coordinates, ItineraryItem, Theme, TravelMode } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { getPlaceDetails, optimizeRouteOrder, generateItineraryForLocation } from '../services/geminiService';
 import { CategoryIcon } from './CategoryIcon';
@@ -15,6 +15,7 @@ interface TripPlannerProps {
   onAddSeparateItem: (item: BucketItem) => void;
   userLocation?: Coordinates | null;
   theme: Theme;
+  travelMode?: TravelMode;
 }
 
 // --- SUB-COMPONENT: FULL SCREEN MAP ---
@@ -22,12 +23,14 @@ const RouteMap = ({
     stops, 
     center, 
     onClose, 
-    theme 
+    theme,
+    travelMode = 'driving'
 }: { 
     stops: ItineraryItem[], 
     center?: Coordinates, 
     onClose: () => void,
-    theme: Theme
+    theme: Theme,
+    travelMode?: TravelMode
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
@@ -151,7 +154,8 @@ const RouteMap = ({
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (stop.coordinates) {
-                                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.coordinates.latitude},${stop.coordinates.longitude}`, '_blank');
+                                                const mode = travelMode === 'bicycling' ? 'bicycling' : travelMode;
+                                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.coordinates.latitude},${stop.coordinates.longitude}&travelmode=${mode}`, '_blank');
                                             }
                                         }}
                                         className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100"
@@ -169,7 +173,7 @@ const RouteMap = ({
 };
 
 // --- SUB-COMPONENT: PLACE DETAILS MODAL ---
-const StopDetailsModal = ({ stop, onClose }: { stop: ItineraryItem, onClose: () => void }) => {
+const StopDetailsModal = ({ stop, onClose, travelMode = 'driving' }: { stop: ItineraryItem, onClose: () => void, travelMode?: TravelMode }) => {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
@@ -227,7 +231,10 @@ const StopDetailsModal = ({ stop, onClose }: { stop: ItineraryItem, onClose: () 
 
                     {stop.coordinates && (
                         <button 
-                            onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.coordinates!.latitude},${stop.coordinates!.longitude}`, '_blank')}
+                            onClick={() => {
+                                const mode = travelMode === 'bicycling' ? 'bicycling' : travelMode;
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${stop.coordinates!.latitude},${stop.coordinates!.longitude}&travelmode=${mode}`, '_blank');
+                            }}
                             className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
                         >
                             <Navigation className="w-4 h-4" />
@@ -240,7 +247,8 @@ const StopDetailsModal = ({ stop, onClose }: { stop: ItineraryItem, onClose: () 
     );
 };
 
-export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation, theme }) => {
+// Explicitly casting travelMode default value to fix "string not assignable to TravelMode" errors
+export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation, theme, travelMode = 'driving' as TravelMode }) => {
   const [stops, setStops] = useState<ItineraryItem[]>(item?.itinerary || []);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -377,6 +385,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
           id: crypto.randomUUID(),
           title: completingStop.name,
           description: completingStop.description || `Visited during trip to ${item?.title}`,
+          type: 'destination', // Added missing 'type' property
           locationName: item?.locationName,
           coordinates: completingStop.coordinates,
           completed: true,
@@ -417,6 +426,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
             center={item.coordinates} 
             onClose={() => setViewMode('list')} 
             theme={theme} 
+            travelMode={travelMode as TravelMode}
           />
       );
   }
@@ -579,7 +589,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
             {/* End Node */}
             <div className="flex gap-4 relative opacity-50">
                  <div className="flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-full border-2 bg-transparent ${theme === 'batman' ? 'border-gray-700' : 'border-gray-300'}`}></div>
+                    <div className={`w-4 h-4 rounded-full border-2 bg-transparent ${theme === 'batman' ? 'border-gray-300' : 'border-gray-300'}`}></div>
                 </div>
                  <div>
                     <h3 className={`text-sm font-medium ${s.textDim}`}>Trip End</h3>
@@ -612,7 +622,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
         
         {/* DETAILS POPUP */}
         {selectedStop && (
-            <StopDetailsModal stop={selectedStop} onClose={() => setSelectedStop(null)} />
+            <StopDetailsModal stop={selectedStop} onClose={() => setSelectedStop(null)} travelMode={travelMode as TravelMode} />
         )}
 
         {/* COMPLETION DATE POPUP */}

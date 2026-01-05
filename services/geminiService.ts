@@ -1,22 +1,21 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { BucketItemDraft, ItineraryItem } from "../types";
+import { BucketItemDraft, ItineraryItem, BucketItem } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Define a common schema for itinerary items used across multiple functions
 const itineraryItemSchema = {
     type: Type.OBJECT,
     properties: {
-        name: { type: Type.STRING, description: 'The name of the place, step, or action.' },
-        description: { type: Type.STRING, description: 'A short description.' },
-        latitude: { type: Type.NUMBER, description: 'Latitude coordinate (optional).' },
-        longitude: { type: Type.NUMBER, description: 'Longitude coordinate (optional).' },
-        isImportant: { type: Type.BOOLEAN, description: 'Whether this is a key highlight.' },
-        imageKeyword: { type: Type.STRING, description: 'A keyword to search for images.' },
-        category: { type: Type.STRING, description: 'The category of the place (e.g., Nature, History, Food).' },
-        interests: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Tags related to interests (e.g., Photography, Hiking).' },
-        bestVisitingTime: { type: Type.STRING, description: 'Best time of day or opening hours summary.' }
+        name: { type: Type.STRING },
+        description: { type: Type.STRING },
+        latitude: { type: Type.NUMBER },
+        longitude: { type: Type.NUMBER },
+        isImportant: { type: Type.BOOLEAN },
+        imageKeyword: { type: Type.STRING },
+        category: { type: Type.STRING },
+        interests: { type: Type.ARRAY, items: { type: Type.STRING } },
+        bestVisitingTime: { type: Type.STRING }
     },
     required: ["name", "description"]
 };
@@ -33,10 +32,7 @@ const bucketItemSchema = {
     category: { type: Type.STRING },
     interests: { type: Type.ARRAY, items: { type: Type.STRING } },
     bestTimeToVisit: { type: Type.STRING },
-    itinerary: {
-        type: Type.ARRAY,
-        items: itineraryItemSchema
-    }
+    itinerary: { type: Type.ARRAY, items: itineraryItemSchema }
   },
   required: ["title", "description", "category"]
 };
@@ -67,6 +63,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
     return {
       title: data.title,
       description: data.description,
+      type: itemType,
       locationName: data.locationName,
       latitude: hasLocation ? data.latitude : undefined,
       longitude: hasLocation ? data.longitude : undefined,
@@ -87,24 +84,50 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       }))
     };
   } catch (error) {
-    return { title: input, description: "", category: "Other", interests: [], images: [] };
+    return { title: input, description: "", type: itemType, category: "Other", interests: [], images: [] };
   }
+};
+
+export const generateStatsInsight = async (completedItems: BucketItem[]): Promise<{ title: string; message: string }> => {
+    try {
+        if (completedItems.length === 0) {
+            return { title: "New Journey Starts!", message: "Ready to knock your first dream? Start by adding a destination!" };
+        }
+
+        const history = completedItems.map(i => ({ title: i.title, cat: i.category, loc: i.locationName }));
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Based on this bucket list history: ${JSON.stringify(history)}. Generate one short, witty, and inspiring "Fun Fact" or "Milestone Achievement". 
+            Examples: "You've traveled 30% of the Great Wall's distance!", "You are officially a 5-star foodie!", "Cultural expert alert: 3 monuments visited!".
+            Return JSON with "title" (short) and "message" (max 120 chars).`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        message: { type: Type.STRING }
+                    },
+                    required: ["title", "message"]
+                }
+            }
+        });
+
+        return JSON.parse(response.text || '{"title": "Keep Knocking!", "message": "You are making amazing progress on your dreams!"}');
+    } catch (e) {
+        return { title: "Milestone Reached!", message: "You've knocked off another dream! Keep going." };
+    }
 };
 
 export const suggestBucketItem = async (availableCategories: string[], context?: string): Promise<BucketItemDraft> => {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Suggest a random "Must Visit" world-famous monument, natural wonder, or unique travel experience that is highly rated. 
-      It should be a top-tier bucket list item. 
-      ${context ? `Ideally related to: ${context}` : ''}
-      Provide title, engaging description, exact location coordinates, and 3-5 itinerary highlights.`,
-      config: { 
-          responseMimeType: "application/json", 
-          responseSchema: bucketItemSchema 
-      }
+      contents: `Suggest a random famous bucket list item. ${context ? `Ideally related to: ${context}` : ''}`,
+      config: { responseMimeType: "application/json", responseSchema: bucketItemSchema }
     });
     const data = JSON.parse(response.text || "{}");
-    return { ...data, images: generateImageUrls(data.imageKeyword || data.title) };
+    return { ...data, type: 'destination', images: generateImageUrls(data.imageKeyword || data.title) };
 };
 
 export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
@@ -115,25 +138,15 @@ export const reverseGeocode = async (lat: number, lng: number): Promise<string> 
     return response.text?.trim() || "Unknown Location";
 };
 
-// --- Missing functions required by ItineraryRouteModal ---
-
-/**
- * Fetches specific details (coordinates, description) for a place name using AI
- */
 export const getPlaceDetails = async (placeName: string, context?: string): Promise<ItineraryItem | null> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Provide details for the place: "${placeName}" ${context ? `located near or in ${context}` : ''}. Include exact latitude and longitude, category, interests tags, and best visiting time.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: itineraryItemSchema,
-      }
+      contents: `Details for: "${placeName}" near ${context}`,
+      config: { responseMimeType: "application/json", responseSchema: itineraryItemSchema }
     });
-
     const data = JSON.parse(response.text || "{}");
     if (!data.name) return null;
-
     return {
       name: data.name,
       description: data.description,
@@ -145,29 +158,16 @@ export const getPlaceDetails = async (placeName: string, context?: string): Prom
       bestVisitingTime: data.bestVisitingTime,
       completed: false
     };
-  } catch (error) {
-    console.error("getPlaceDetails failed:", error);
-    return null;
-  }
+  } catch (error) { return null; }
 };
 
-/**
- * Generates a full itinerary (top 15 spots) for a specific city or destination
- */
 export const generateItineraryForLocation = async (location: string): Promise<ItineraryItem[]> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate a detailed bucket list itinerary for: "${location}". Return the top 15 must-see spots with their coordinates, categories, interests, and opening/best visiting times.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: itineraryItemSchema
-        },
-      }
+      contents: `Top 15 spots for: "${location}".`,
+      config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
-
     const data = JSON.parse(response.text || "[]");
     return data.map((item: any) => ({
       name: item.name,
@@ -180,29 +180,16 @@ export const generateItineraryForLocation = async (location: string): Promise<It
       bestVisitingTime: item.bestVisitingTime,
       completed: false
     }));
-  } catch (error) {
-    console.error("generateItineraryForLocation failed:", error);
-    return [];
-  }
+  } catch (error) { return []; }
 };
 
-/**
- * Suggests interesting road trip stops between two locations
- */
 export const generateRoadTripStops = async (start: string, end: string): Promise<ItineraryItem[]> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Suggest 5-8 interesting road trip stops when traveling from "${start}" to "${end}". Provide names, descriptions, coordinates, categories, and interest tags.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: itineraryItemSchema
-        },
-      }
+      contents: `5-8 road trip stops from "${start}" to "${end}".`,
+      config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
-
     const data = JSON.parse(response.text || "[]");
     return data.map((item: any) => ({
       name: item.name,
@@ -215,48 +202,21 @@ export const generateRoadTripStops = async (start: string, end: string): Promise
       bestVisitingTime: item.bestVisitingTime,
       completed: false
     }));
-  } catch (error) {
-    console.error("generateRoadTripStops failed:", error);
-    return [];
-  }
+  } catch (error) { return []; }
 };
 
-/**
- * Optimizes the order of stops for a geographically logical route
- */
 export const optimizeRouteOrder = async (items: ItineraryItem[]): Promise<ItineraryItem[]> => {
     if (items.length <= 2) return items;
-    
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Given these stops: ${JSON.stringify(items.map(i => i.name))}, reorder them to be geographically efficient for a single trip. Return the full objects in the new order.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: itineraryItemSchema
-                }
-            }
+            contents: `Reorder efficiently: ${JSON.stringify(items.map(i => i.name))}`,
+            config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
         });
-
         const data = JSON.parse(response.text || "[]");
         return data.map((item: any) => {
             const original = items.find(i => i.name === item.name);
-            return {
-                ...original,
-                name: item.name,
-                description: item.description,
-                coordinates: (item.latitude && item.longitude) ? { latitude: item.latitude, longitude: item.longitude } : (original?.coordinates),
-                isImportant: item.isImportant,
-                images: item.imageKeyword ? generateImageUrls(item.imageKeyword) : (original?.images || []),
-                category: item.category || original?.category,
-                interests: item.interests || original?.interests,
-                bestVisitingTime: item.bestVisitingTime || original?.bestVisitingTime
-            } as ItineraryItem;
+            return { ...original, ...item } as ItineraryItem;
         });
-    } catch (error) {
-        console.error("optimizeRouteOrder failed:", error);
-        return items;
-    }
+    } catch (error) { return items; }
 };
