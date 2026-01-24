@@ -1,12 +1,13 @@
 
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as L from 'leaflet';
-import { ArrowLeft, MapPin, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Footprints, MoreVertical, Zap, Flag, GripVertical, Star, Clock, X, Info, Circle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Footprints, MoreVertical, Zap, Flag, GripVertical, Star, Clock, X, Info, Circle, CheckCircle2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 import { BucketItem, Coordinates, ItineraryItem, Theme, TravelMode } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { getPlaceDetails, optimizeRouteOrder, generateItineraryForLocation } from '../services/geminiService';
 import { CategoryIcon } from './CategoryIcon';
 import { CompleteDateModal } from './CompleteDateModal';
+import { triggerHaptic } from '../utils/haptics';
 
 interface TripPlannerProps {
   item: BucketItem | null;
@@ -36,17 +37,15 @@ const RouteMap = ({
     const mapInstanceRef = useRef<L.Map | null>(null);
     const [activeStopIndex, setActiveStopIndex] = useState(0);
 
-    // Color Palette based on theme
     const themeColor = useMemo(() => {
         if (theme === 'marvel') return '#EF4444';
-        if (theme === 'elsa') return '#F97316'; // Orange 500 for Frozen
-        return '#f59e0b'; // Batman/Default
+        if (theme === 'elsa') return '#F97316';
+        return '#f59e0b';
     }, [theme]);
 
     useEffect(() => {
         if (!mapContainerRef.current) return;
 
-        // 1. Initialize Map
         const map = L.map(mapContainerRef.current, { zoomControl: false });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
@@ -55,11 +54,9 @@ const RouteMap = ({
         
         mapInstanceRef.current = map;
 
-        // 2. Plot Markers
         const bounds = L.latLngBounds([]);
         const points: L.LatLngExpression[] = [];
 
-        // Destination Center
         if (center) {
             const centerIcon = L.divIcon({
                 className: 'bg-transparent',
@@ -87,35 +84,30 @@ const RouteMap = ({
                     iconAnchor: [15, 15]
                 });
 
-                const m = L.marker([stop.coordinates.latitude, stop.coordinates.longitude], { icon: stopIcon })
+                L.marker([stop.coordinates.latitude, stop.coordinates.longitude], { icon: stopIcon })
                     .addTo(map)
                     .on('click', () => setActiveStopIndex(idx));
             }
         });
 
-        // 3. Draw Route Line
         if (points.length > 0) {
             L.polyline(points, { color: themeColor, weight: 4, opacity: 0.7, dashArray: '10, 10' }).addTo(map);
         }
 
-        // 4. Fit Bounds & Invalidate Size (Crucial for rendering)
         if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [50, 50] });
         } else if (center) {
             map.setView([center.latitude, center.longitude], 13);
         }
 
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 300);
+        setTimeout(() => map.invalidateSize(), 300);
 
         return () => {
             map.remove();
             mapInstanceRef.current = null;
         };
-    }, []); // Run once on mount
+    }, []);
 
-    // Pan map when active carousel item changes
     useEffect(() => {
         const stop = stops[activeStopIndex];
         if (stop?.coordinates && mapInstanceRef.current) {
@@ -133,7 +125,6 @@ const RouteMap = ({
             
             <div ref={mapContainerRef} className="flex-1 w-full h-full z-0" />
 
-            {/* Carousel at Bottom */}
             {stops.length > 0 && (
                 <div className="absolute bottom-8 left-0 right-0 z-[1000] px-4">
                     <div className="flex overflow-x-auto gap-4 no-scrollbar snap-x snap-mandatory py-4">
@@ -178,7 +169,6 @@ const StopDetailsModal = ({ stop, onClose, travelMode = 'driving' }: { stop: Iti
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
                 
-                {/* Image Header */}
                 <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
                     {stop.images && stop.images.length > 0 ? (
                         <img src={stop.images[0]} alt={stop.name} className="w-full h-full object-cover" />
@@ -201,7 +191,6 @@ const StopDetailsModal = ({ stop, onClose, travelMode = 'driving' }: { stop: Iti
                     )}
                 </div>
 
-                {/* Content */}
                 <div className="p-6 overflow-y-auto">
                     <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight mb-2">{stop.name}</h2>
                     
@@ -247,7 +236,6 @@ const StopDetailsModal = ({ stop, onClose, travelMode = 'driving' }: { stop: Iti
     );
 };
 
-// Explicitly casting travelMode default value to fix "string not assignable to TravelMode" errors
 export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation, theme, travelMode = 'driving' as TravelMode }) => {
   const [stops, setStops] = useState<ItineraryItem[]>(item?.itinerary || []);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -257,10 +245,9 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
   const [isAdding, setIsAdding] = useState(false);
   const [selectedStop, setSelectedStop] = useState<ItineraryItem | null>(null);
   const [completingStop, setCompletingStop] = useState<ItineraryItem | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- Theme Styles ---
   const s = useMemo(() => {
-    // Shared Vibrant Orange for highlights (Badge, Best Time)
     const orange = {
         marvel: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20',
         elsa: 'bg-orange-400 text-white shadow-lg shadow-orange-400/20',
@@ -269,55 +256,18 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
 
     switch (theme) {
         case 'marvel': return { 
-            bg: 'bg-slate-50',
-            surface: 'bg-white',
-            header: 'bg-white border-slate-100',
-            text: 'text-slate-900',
-            textDim: 'text-slate-500',
-            accent: 'text-red-600',
-            border: 'border-slate-200',
-            line: 'bg-slate-200',
-            dot: 'bg-red-600 border-white',
-            badge: orange.marvel,
-            btnPrimary: 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20',
-            btnGhost: 'bg-red-50 text-red-600 hover:bg-red-100',
-            cardHover: 'hover:border-red-200 hover:shadow-red-500/5',
+            bg: 'bg-slate-50', surface: 'bg-white', header: 'bg-white border-slate-100', text: 'text-slate-900', textDim: 'text-slate-500', accent: 'text-red-600', border: 'border-slate-200', line: 'bg-slate-200', dot: 'bg-red-600 border-white', badge: orange.marvel, btnPrimary: 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20', btnGhost: 'bg-red-50 text-red-600 hover:bg-red-100', cardHover: 'hover:border-red-200 hover:shadow-red-500/5',
         };
         case 'elsa': return { 
-            bg: 'bg-[#f0f9ff]', // Very light blue
-            surface: 'bg-white',
-            header: 'bg-white/80 backdrop-blur-md border-cyan-100',
-            text: 'text-cyan-950',
-            textDim: 'text-cyan-600/70',
-            accent: 'text-orange-600', // Orange Accent
-            border: 'border-cyan-100',
-            line: 'bg-cyan-200',
-            dot: 'bg-orange-500 border-white', // Orange Dot
-            badge: orange.elsa,
-            btnPrimary: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20', // Orange Button
-            btnGhost: 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100',
-            cardHover: 'hover:border-cyan-200 hover:shadow-cyan-500/5',
+            bg: 'bg-[#f0f9ff]', surface: 'bg-white', header: 'bg-white/80 backdrop-blur-md border-cyan-100', text: 'text-cyan-950', textDim: 'text-cyan-600/70', accent: 'text-orange-600', border: 'border-cyan-100', line: 'bg-cyan-200', dot: 'bg-orange-500 border-white', badge: orange.elsa, btnPrimary: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20', btnGhost: 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100', cardHover: 'hover:border-cyan-200 hover:shadow-cyan-500/5',
         };
         case 'batman': 
         default: return { 
-            bg: 'bg-[#000000]',
-            surface: 'bg-[#111827]', // Gray 900
-            header: 'bg-[#111827] border-gray-800',
-            text: 'text-gray-100',
-            textDim: 'text-gray-400',
-            accent: 'text-yellow-500',
-            border: 'border-gray-800',
-            line: 'bg-gray-800',
-            dot: 'bg-yellow-500 border-gray-900',
-            badge: orange.batman,
-            btnPrimary: 'bg-yellow-500 hover:bg-yellow-400 text-black shadow-yellow-500/20',
-            btnGhost: 'bg-gray-800 text-gray-300 hover:text-yellow-500 hover:bg-gray-700',
-            cardHover: 'hover:border-yellow-500/30 hover:shadow-yellow-500/10',
+            bg: 'bg-[#000000]', surface: 'bg-[#111827]', header: 'bg-[#111827] border-gray-800', text: 'text-gray-100', textDim: 'text-gray-400', accent: 'text-yellow-500', border: 'border-gray-800', line: 'bg-gray-800', dot: 'bg-yellow-500 border-gray-900', badge: orange.batman, btnPrimary: 'bg-yellow-500 hover:bg-yellow-400 text-black shadow-yellow-500/20', btnGhost: 'bg-gray-800 text-gray-300 hover:text-yellow-500 hover:bg-gray-700', cardHover: 'hover:border-yellow-500/30 hover:shadow-yellow-500/10',
         };
     }
   }, [theme]);
 
-  // Sync stops when item changes
   useEffect(() => {
       setStops(item?.itinerary || []);
   }, [item?.id]);
@@ -325,6 +275,7 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
   const handleAddStop = async () => {
       if (!newPlace.trim()) return;
       setIsAdding(true);
+      setErrorMsg(null);
       const details = await getPlaceDetails(newPlace, item?.locationName);
       const newStop: ItineraryItem = details || { name: newPlace, completed: false };
       
@@ -336,17 +287,23 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
   };
 
   const handleMagicFill = async () => {
-      if (!item?.locationName) return;
+      if (!item?.locationName || !item?.coordinates) return;
       setIsMagicFilling(true);
+      setErrorMsg(null);
       try {
           const suggestions = await generateItineraryForLocation(item.locationName);
           const existingNames = new Set(stops.map(s => s.name.toLowerCase()));
-          const newItems = suggestions.filter(s => !existingNames.has(s.name.toLowerCase()));
           
-          if (newItems.length > 0) {
-            const updated = [...stops, ...newItems];
+          const filteredSuggestions = suggestions.filter(s => {
+              return !existingNames.has(s.name.toLowerCase());
+          });
+          
+          if (filteredSuggestions.length > 0) {
+            const updated = [...stops, ...filteredSuggestions];
             setStops(updated);
             onUpdateItem({ ...item, itinerary: updated });
+          } else {
+              setErrorMsg("No more new local spots found.");
           }
       } catch (error) {
           console.error("Magic fill failed", error);
@@ -368,24 +325,36 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
       const updated = stops.filter((_, i) => i !== index);
       setStops(updated);
       onUpdateItem({ ...item!, itinerary: updated });
+      triggerHaptic('warning');
+  };
+
+  const handleMoveStop = (index: number, direction: 'up' | 'down') => {
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= stops.length) return;
+      
+      const updated = [...stops];
+      const temp = updated[index];
+      updated[index] = updated[newIndex];
+      updated[newIndex] = temp;
+      
+      setStops(updated);
+      onUpdateItem({ ...item!, itinerary: updated });
+      triggerHaptic('light');
   };
 
   const handleStopCompletionConfirm = (date: number) => {
       if (!completingStop) return;
-
-      // 1. Mark as completed in the itinerary
       const updatedStops = stops.map(s => 
           s.name === completingStop.name ? { ...s, completed: true } : s
       );
       setStops(updatedStops);
       onUpdateItem({ ...item!, itinerary: updatedStops });
 
-      // 2. Create a new BucketItem for this specific stop
       const newCompletedItem: BucketItem = {
           id: crypto.randomUUID(),
           title: completingStop.name,
           description: completingStop.description || `Visited during trip to ${item?.title}`,
-          type: 'destination', // Added missing 'type' property
+          type: 'destination',
           locationName: item?.locationName,
           coordinates: completingStop.coordinates,
           completed: true,
@@ -397,7 +366,6 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
           owner: item?.owner || 'Me'
       };
       onAddSeparateItem(newCompletedItem);
-
       setCompletingStop(null);
   };
 
@@ -411,14 +379,13 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
               prevCoords = stop.coordinates;
           }
       });
-      return { dist, time: Math.round(dist / 500) }; // Crude time est
+      return { dist, time: Math.round(dist / 500) };
   };
 
   const stats = calculateTotalStats();
 
   if (!item) return null;
 
-  // --- RENDER MAP MODE ---
   if (viewMode === 'map') {
       return (
           <RouteMap 
@@ -431,14 +398,11 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
       );
   }
 
-  // --- RENDER TIMELINE MODE ---
   return (
     <div className={`absolute inset-0 z-0 flex flex-col ${s.bg}`}>
         {/* HEADER */}
         <div className={`px-5 pt-4 pb-4 border-b shadow-sm shrink-0 z-20 transition-colors ${s.header} ${s.border}`}>
             <div className="flex justify-between items-start gap-3">
-                
-                {/* Left: Title & Meta */}
                 <div className="flex-1 min-w-0 pt-0.5">
                     <h1 className={`text-xl font-black leading-tight truncate mb-2 ${s.text}`}>
                         {item.title}
@@ -446,24 +410,23 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                     
                     <div className="flex items-center flex-wrap gap-2">
                          <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${s.badge}`}>
-                            Trip Planner
+                            Local Itinerary
                          </span>
                          <span className={`${s.textDim} text-[10px]`}>|</span>
                          <div className={`flex items-center gap-3 text-[10px] font-medium ${s.textDim}`}>
-                            {item.locationName && <span>{item.locationName}</span>}
+                            {item.locationName && <span className="truncate max-w-[80px]">{item.locationName}</span>}
                             <span className="flex items-center gap-1"><Footprints className="w-3 h-3" /> {formatDistance(stats.dist)}</span>
                             <span className="flex items-center gap-1"><Flag className="w-3 h-3" /> {stops.length}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right: Actions */}
                 <div className="flex gap-1.5 shrink-0">
                      <button 
                         onClick={handleMagicFill}
                         disabled={isMagicFilling || !item.locationName}
                         className={`p-2 rounded-full disabled:opacity-50 transition-colors ${s.btnGhost}`}
-                        title="Magic Fill Suggestions"
+                        title="Magic Fill Nearby Spots"
                     >
                         {isMagicFilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 fill-current" />}
                     </button>
@@ -484,7 +447,6 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                     <button 
                         onClick={onClose} 
                         className={`p-2 rounded-full transition-colors ${s.btnGhost}`}
-                        title="Close"
                     >
                         <ArrowLeft className="w-4 h-4" />
                     </button>
@@ -493,92 +455,82 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
         </div>
 
         {/* TIMELINE CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 relative">
-            {/* Start Node */}
+        <div className="flex-1 overflow-y-auto p-6 relative no-scrollbar">
+            {errorMsg && (
+                <div className="mb-4 p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 flex items-center gap-2 text-xs font-bold text-orange-600 dark:text-orange-400 animate-in slide-in-from-top duration-300">
+                    <AlertTriangle className="w-4 h-4" />
+                    {errorMsg}
+                </div>
+            )}
+
             <div className="flex gap-4 relative mb-2">
                 <div className="flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-full border-4 border-white shadow-md z-10 ${s.dot} ${theme === 'batman' ? 'shadow-none' : ''}`}></div>
+                    <div className={`w-4 h-4 rounded-full border-4 border-white shadow-md z-10 ${s.dot}`}></div>
                     <div className={`w-0.5 flex-1 my-1 ${s.line}`}></div>
                 </div>
                 <div className="pb-8">
                     <h3 className={`text-sm font-bold ${s.text}`}>Start</h3>
-                    <p className={`text-xs ${s.textDim}`}>{item.locationName || 'Current Location'}</p>
+                    <p className={`text-xs ${s.textDim}`}>{item.locationName || 'Destination Center'}</p>
                 </div>
             </div>
 
-            {/* Stops */}
             {stops.map((stop, idx) => (
-                <div key={idx} className="flex gap-4 relative group animate-in slide-in-from-bottom-2 fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
-                    {/* Line & Dot */}
+                <div key={`${stop.name}-${idx}`} className="flex gap-4 relative group animate-in slide-in-from-bottom-2 fade-in">
                     <div className="flex flex-col items-center pt-1.5">
-                        {/* Distance Badge on Line */}
-                        {idx >= 0 && (
-                            <div className={`absolute -top-5 left-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full z-0 transform -translate-x-1/2 ${theme === 'batman' ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-400 border border-gray-100'}`}>
-                                {stop.coordinates && (idx === 0 ? item.coordinates : stops[idx-1].coordinates) 
-                                    ? formatDistance(calculateDistance(stop.coordinates, idx === 0 ? item.coordinates! : stops[idx-1].coordinates!))
-                                    : '---'}
-                            </div>
-                        )}
-                        
-                        <div className={`w-8 h-8 rounded-full border-4 flex items-center justify-center z-10 shadow-sm ${s.dot} ${theme === 'batman' ? 'border-gray-900' : 'border-white'}`}>
-                            <span className={`text-xs font-bold ${theme === 'batman' ? 'text-black' : 'text-white'}`}>{idx + 1}</span>
+                        <div className={`w-8 h-8 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 ${stop.completed ? 'bg-green-500 border-green-100 text-white' : 'bg-white dark:bg-slate-800 ' + s.border + ' ' + s.text}`}>
+                            {stop.completed ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-[10px] font-bold">{idx + 1}</span>}
                         </div>
-                        {idx !== stops.length - 1 && <div className={`w-0.5 flex-1 my-1 ${s.line}`}></div>}
+                        <div className={`w-0.5 flex-1 my-1 ${s.line}`}></div>
                     </div>
-
-                    {/* Card */}
-                    <div className="flex-1 pb-8 min-w-0">
-                        <div className={`p-4 rounded-2xl shadow-sm border relative transition-all ${s.surface} ${s.border} ${s.cardHover} ${stop.completed ? 'opacity-60' : ''}`}>
-                            <div className="flex justify-between items-start mb-1 gap-2">
-                                <div className="flex-1 flex items-start gap-3 min-w-0">
-                                    {/* Radio Button for Completion */}
+                    
+                    <div className="pb-10 flex-1 min-w-0">
+                        <div 
+                            className={`p-4 rounded-2xl border transition-all duration-300 ${s.surface} ${s.border} ${s.cardHover} flex gap-3`}
+                        >
+                            {/* Reordering Controls */}
+                            {!stop.completed && (
+                                <div className="flex flex-col gap-2 shrink-0">
                                     <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!stop.completed) setCompletingStop(stop);
-                                        }}
-                                        className={`shrink-0 mt-0.5 transition-all ${stop.completed ? 'text-green-500 cursor-default' : `${s.textDim} hover:text-green-500`}`}
-                                        title={stop.completed ? "Completed" : "Mark as Completed"}
+                                        disabled={idx === 0}
+                                        onClick={() => handleMoveStop(idx, 'up')}
+                                        className={`p-1 rounded-md transition-colors disabled:opacity-10 ${s.btnGhost}`}
                                     >
-                                        {stop.completed ? <CheckCircle2 className="w-5 h-5 fill-current" /> : <Circle className="w-5 h-5" />}
+                                        <ChevronUp className="w-4 h-4" />
                                     </button>
-
                                     <button 
-                                        onClick={() => setSelectedStop(stop)}
-                                        className={`text-left font-bold truncate hover:text-blue-500 transition-colors flex items-center gap-2 group/title ${stop.completed ? `${s.textDim} line-through` : s.text}`}
+                                        disabled={idx === stops.length - 1}
+                                        onClick={() => handleMoveStop(idx, 'down')}
+                                        className={`p-1 rounded-md transition-colors disabled:opacity-10 ${s.btnGhost}`}
                                     >
-                                        {stop.name}
-                                        <Info className={`w-3 h-3 ${s.textDim} group-hover/title:text-blue-500 shrink-0 opacity-50`} />
+                                        <ChevronDown className="w-4 h-4" />
                                     </button>
                                 </div>
-                                
-                                <button 
-                                    onClick={() => handleRemoveStop(idx)}
-                                    className={`${s.textDim} hover:text-red-500 transition-colors`}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                            )}
+
+                            <div className="flex-1 min-w-0" onClick={() => setSelectedStop(stop)}>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h4 className={`font-black text-sm md:text-base leading-tight truncate ${stop.completed ? 'line-through opacity-50' : s.text}`}>
+                                        {stop.name}
+                                    </h4>
+                                    {stop.isImportant && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 shrink-0" />}
+                                </div>
+                                <p className={`text-[10px] line-clamp-2 leading-relaxed ${s.textDim}`}>{stop.description}</p>
                             </div>
-                            
-                            {stop.description && <p className={`text-xs ${s.textDim} line-clamp-2 mb-3 cursor-pointer pl-8`} onClick={() => setSelectedStop(stop)}>{stop.description}</p>}
-                            
-                            <div className="flex flex-wrap gap-2 pl-8">
-                                {stop.isImportant && (
-                                    <span className="px-2 py-1 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border border-yellow-500/20">
-                                        <Star className="w-3 h-3 fill-current" /> Must See
-                                    </span>
-                                )}
-                                {stop.category && (
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 border ${theme === 'batman' ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                                        <CategoryIcon category={stop.category} className="w-3 h-3" />
-                                        {stop.category}
-                                    </span>
-                                )}
-                                {stop.bestVisitingTime && (
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${s.badge}`}>
-                                        <Clock className="w-3 h-3" />
-                                        {stop.bestVisitingTime}
-                                    </span>
+
+                            <div className="flex flex-col items-center gap-2 shrink-0">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveStop(idx); }} 
+                                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                {!stop.completed && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setCompletingStop(stop); }} 
+                                        className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
+                                    >
+                                        <Circle className="w-3.5 h-3.5" />
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -586,50 +538,44 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                 </div>
             ))}
 
-            {/* End Node */}
-            <div className="flex gap-4 relative opacity-50">
-                 <div className="flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-full border-2 bg-transparent ${theme === 'batman' ? 'border-gray-300' : 'border-gray-300'}`}></div>
+            {/* ADD NEW PLACE INPUT */}
+            <div className="flex gap-4 relative">
+                <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full border-4 flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${s.border} ${s.textDim}`}>
+                         {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    </div>
                 </div>
-                 <div>
-                    <h3 className={`text-sm font-medium ${s.textDim}`}>Trip End</h3>
-                </div>
-            </div>
-
-            {/* Add Stop Input Area */}
-            <div className="mt-8 pb-20">
-                <div className={`flex items-center gap-2 p-2 rounded-xl border shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all ${s.surface} ${s.border}`}>
-                    <Plus className={`w-5 h-5 ml-2 ${s.textDim}`} />
-                    <input 
-                        type="text" 
-                        value={newPlace}
-                        onChange={(e) => setNewPlace(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddStop()}
-                        placeholder="Add another stop..."
-                        className={`flex-1 bg-transparent border-none outline-none text-sm h-10 ${s.text}`}
-                        disabled={isAdding}
-                    />
-                    <button 
-                        onClick={handleAddStop}
-                        disabled={!newPlace.trim() || isAdding}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50 ${theme === 'batman' ? 'bg-white text-black' : 'bg-gray-900 text-white'}`}
-                    >
-                        {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
-                    </button>
+                <div className="flex-1 pb-12">
+                    <div className={`flex items-center gap-2 p-1.5 pr-2 rounded-2xl border bg-white dark:bg-slate-800 ${s.border}`}>
+                        <input 
+                            type="text" 
+                            value={newPlace}
+                            onChange={(e) => { setNewPlace(e.target.value); setErrorMsg(null); }}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddStop()}
+                            placeholder="Add a specific local spot..."
+                            className={`flex-1 bg-transparent text-sm outline-none px-3 py-2 ${s.text} placeholder:text-gray-400`}
+                        />
+                        <button 
+                            onClick={handleAddStop}
+                            disabled={!newPlace.trim() || isAdding}
+                            className={`p-2 rounded-xl transition-all disabled:opacity-30 ${s.btnPrimary}`}
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-400 mt-2 px-1 flex items-center gap-1">
+                        <Info className="w-3 h-3" /> Focus on gems within the city area.
+                    </p>
                 </div>
             </div>
         </div>
-        
-        {/* DETAILS POPUP */}
-        {selectedStop && (
-            <StopDetailsModal stop={selectedStop} onClose={() => setSelectedStop(null)} travelMode={travelMode as TravelMode} />
-        )}
 
-        {/* COMPLETION DATE POPUP */}
+        {selectedStop && <StopDetailsModal stop={selectedStop} onClose={() => setSelectedStop(null)} travelMode={travelMode as TravelMode} />}
+        
         <CompleteDateModal 
-            isOpen={!!completingStop}
-            onClose={() => setCompletingStop(null)}
-            onConfirm={handleStopCompletionConfirm}
+            isOpen={!!completingStop} 
+            onClose={() => setCompletingStop(null)} 
+            onConfirm={handleStopCompletionConfirm} 
             itemTitle={completingStop?.name}
         />
     </div>

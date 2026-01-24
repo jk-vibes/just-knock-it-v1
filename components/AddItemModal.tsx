@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-// Added CheckCircle2 to the imports from lucide-react
-import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Car, Navigation, RefreshCw, Hash, Target, AlertCircle, Mic, MicOff, CheckCircle2, Flag } from 'lucide-react';
+import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Car, Navigation, RefreshCw, Hash, Target, AlertCircle, Mic, MicOff, CheckCircle2, Flag, Save } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem, generateRoadTripStops, optimizeRouteOrder } from '../services/geminiService';
 import { BucketItemDraft, BucketItem, ItineraryItem, Theme } from '../types';
 import { CategoryIcon } from './CategoryIcon';
@@ -20,7 +19,6 @@ interface AddItemModalProps {
   theme: Theme;
 }
 
-// Support for different browser implementations of SpeechRecognition
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({ 
@@ -41,11 +39,11 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [completedDate, setCompletedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [targetDate, setTargetDate] = useState<string>('');
 
-  // Ref to track valid async requests. If modal closes, we increment this to "cancel" pending callbacks.
   const requestRef = useRef(0);
   const recognitionRef = useRef<any>(null);
 
-  // Dynamic Theme Styles
+  const isEditMode = mode === 'edit';
+
   const s = useMemo(() => {
     switch(theme) {
         case 'elsa':
@@ -124,46 +122,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
   }, [theme]);
 
-  // Voice Recognition Logic
   useEffect(() => {
     if (!SpeechRecognition) return;
-
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      triggerHaptic('light');
-    };
-
+    recognition.onstart = () => { setIsListening(true); triggerHaptic('light'); };
     recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0])
-        .map((result: any) => result.transcript)
-        .join('');
-      
+      const transcript = Array.from(event.results).map((result: any) => result[0]).map((result: any) => result.transcript).join('');
       setInput(transcript);
     };
-
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
       setIsListening(false);
-      if (event.error === 'not-allowed') {
-          setValidationError("Microphone access denied. Please enable it in settings.");
-      }
+      if (event.error === 'not-allowed') setValidationError("Microphone access denied.");
     };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
+    recognition.onend = () => setIsListening(false);
     recognitionRef.current = recognition;
-
-    return () => {
-      if (recognitionRef.current) recognitionRef.current.stop();
-    };
+    return () => { if (recognitionRef.current) recognitionRef.current.stop(); };
   }, []);
 
   useEffect(() => {
@@ -173,57 +150,43 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         setIsListening(false);
         setValidationError(null);
 
-        if (initialData && mode === 'edit') {
+        if (initialData && isEditMode) {
             const mappedDraft: BucketItemDraft = { ...initialData };
-            if ((initialData as any).coordinates) {
-                mappedDraft.latitude = (initialData as any).coordinates.latitude;
-                mappedDraft.longitude = (initialData as any).coordinates.longitude;
-            }
             setDraft(mappedDraft);
             setSelectedCategory(initialData.category || 'Travel');
             setSelectedInterests(initialData.interests || []);
+            setIsCompleted(initialData.isCompleted || false);
+            setCompletedDate(initialData.completedAt ? new Date(initialData.completedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
             setInput(initialData.title);
             setTargetDate(initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '');
             
-            // Restore tripType from saved type
             if (initialData.type) {
                 setTripType(initialData.type);
                 if (initialData.type === 'roadtrip' && initialData.roadTrip) {
                     setStartLocation(initialData.roadTrip.startLocation || '');
                 }
             } else {
-                // Fallback for legacy items
-                if (initialData.roadTrip) {
-                    setTripType('roadtrip');
-                    setStartLocation(initialData.roadTrip.startLocation || '');
-                } else {
-                    setTripType(!(initialData as any).coordinates ? 'goal' : 'destination');
-                }
+                setTripType(!(initialData as any).coordinates ? 'goal' : 'destination');
             }
-        } else if (mode === 'add') {
+        } else {
             setDraft(null); 
             setInput(''); 
             setSelectedCategory('Travel'); 
             setSelectedInterests([]); 
             setTripType('destination');
             setTargetDate('');
+            setIsCompleted(false);
         }
     } else {
         requestRef.current++;
-        setIsAnalyzing(false);
-        setIsInspiring(false);
-        setIsListening(false);
-        setValidationError(null);
-        if (recognitionRef.current) recognitionRef.current.stop();
     }
-  }, [isOpen, initialData, mode]);
+  }, [isOpen, initialData, isEditMode]);
 
   useEffect(() => {
-      if (draft && draft.interests) {
+      if (draft && draft.interests && !isEditMode) {
           setSelectedInterests(prev => Array.from(new Set([...prev, ...draft.interests!])));
       }
-      setValidationError(null);
-  }, [draft]);
+  }, [draft, isEditMode]);
 
   const handleMagicFill = async () => {
     if (!input.trim()) return;
@@ -253,9 +216,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             if (result && result.category) setSelectedCategory(result.category);
             setIsAnalyzing(false);
         }
-    } catch (e) {
-        if (requestRef.current === requestId) setIsAnalyzing(false);
-    }
+    } catch (e) { if (requestRef.current === requestId) setIsAnalyzing(false); }
   };
 
   const handleInspireMe = async () => {
@@ -269,48 +230,46 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               if (result.category) setSelectedCategory(result.category);
               setIsInspiring(false);
           }
-      } catch (e) {
-          if (requestRef.current === requestId) setIsInspiring(false);
-      }
+      } catch (e) { if (requestRef.current === requestId) setIsInspiring(false); }
   };
 
   const handleConfirm = () => {
-    if (draft) {
+    if (draft || input.trim()) {
+      const finalTitle = draft?.title || input;
+      
+      // Fixed duplicate check: Only check other items, excluding the one currently being edited
       const isDuplicate = items.some(item => 
-        item.title.toLowerCase().trim() === draft.title.toLowerCase().trim() && 
+        item.title.toLowerCase().trim() === finalTitle.toLowerCase().trim() && 
         item.id !== editingId
       );
+
       if (isDuplicate) {
         setValidationError("This dream is already on your list!");
+        triggerHaptic('warning');
         return;
       }
+
       const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
       const targetTimestamp = targetDate ? new Date(targetDate).getTime() : undefined;
+      
       onAdd({
-        ...draft,
-        title: draft.title || input,
-        type: tripType, // Ensure selected type is saved
-        category: selectedCategory || draft.category,
+        ...(draft || {}),
+        title: finalTitle,
+        type: tripType,
+        category: selectedCategory || draft?.category || 'Travel',
         interests: selectedInterests,
         isCompleted: isCompleted,
         completedAt: completedTimestamp,
         dueDate: targetTimestamp,
-      });
+      } as BucketItemDraft);
       onClose();
     }
   };
 
   const toggleVoiceInput = () => {
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in your browser.");
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      setValidationError(null);
-      recognitionRef.current.start();
-    }
+    if (!SpeechRecognition) return;
+    if (isListening) recognitionRef.current.stop();
+    else { setValidationError(null); recognitionRef.current.start(); }
   };
 
   if (!isOpen) return null;
@@ -321,12 +280,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         <div className="p-6 overflow-y-auto no-scrollbar flex-1">
           <div className="flex justify-between items-center mb-1">
             <h2 className={`text-xl font-bold ${s.heading}`}>
-              {mode === 'edit' ? 'Edit Dream' : 'New Dream'}
+              {isEditMode ? 'Edit Dream' : 'New Dream'}
             </h2>
             <button onClick={onClose} className={`p-1 ${s.closeBtn}`}><X className="w-5 h-5" /></button>
           </div>
 
-          {!draft ? (
+          {(!draft && !isEditMode) ? (
             <div className="space-y-4">
                 <p className={`text-sm leading-relaxed mb-2 ${s.textSecondary}`}>
                     Type your dream and let AI fill in the details.
@@ -343,59 +302,42 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <button 
                         onClick={toggleVoiceInput}
                         className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-300 ${isListening ? `${s.micActive} animate-pulse scale-110` : `${s.micBtn} hover:scale-110`}`}
-                        title={isListening ? "Stop Listening" : "Voice Input"}
                     >
                         {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 opacity-60" />}
                     </button>
                 </div>
 
-                {input.trim().length > 0 && (
-                    <div className="flex gap-4 animate-in fade-in slide-in-from-top-1 flex-wrap">
-                        <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'destination'} onChange={() => setTripType('destination')} className={s.radioAccent} />
-                            <MapPin className="w-3 h-3" /> <span>Destination</span>
-                        </label>
-                        <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'roadtrip'} onChange={() => setTripType('roadtrip')} className={s.radioAccent} />
-                            <Car className="w-3 h-3" /> <span>Road Trip</span>
-                        </label>
-                        <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                            <input type="radio" checked={tripType === 'goal'} onChange={() => setTripType('goal')} className={s.radioAccent} />
-                            <Target className="w-3 h-3" /> <span>Goal</span>
-                        </label>
-                    </div>
-                )}
+                <div className="flex gap-4 animate-in fade-in slide-in-from-top-1 flex-wrap">
+                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
+                        <input type="radio" checked={tripType === 'destination'} onChange={() => setTripType('destination')} className={s.radioAccent} />
+                        <MapPin className="w-3 h-3" /> <span>Destination</span>
+                    </label>
+                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
+                        <input type="radio" checked={tripType === 'roadtrip'} onChange={() => setTripType('roadtrip')} className={s.radioAccent} />
+                        <Car className="w-3 h-3" /> <span>Road Trip</span>
+                    </label>
+                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
+                        <input type="radio" checked={tripType === 'goal'} onChange={() => setTripType('goal')} className={s.radioAccent} />
+                        <Target className="w-3 h-3" /> <span>Goal</span>
+                    </label>
+                </div>
 
                 {tripType === 'roadtrip' && (
                     <div className="animate-in slide-in-from-left duration-300">
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Starting From</label>
                         <div className="relative">
                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input 
-                                type="text" 
-                                value={startLocation}
-                                onChange={(e) => setStartLocation(e.target.value)}
-                                placeholder="City or 'current location'"
-                                className={`w-full pl-9 p-3 rounded-xl border outline-none text-sm transition-all ${s.input}`}
-                            />
+                            <input type="text" value={startLocation} onChange={(e) => setStartLocation(e.target.value)} placeholder="City or 'current location'" className={`w-full pl-9 p-3 rounded-xl border outline-none text-sm transition-all ${s.input}`} />
                         </div>
                     </div>
                 )}
 
                 <div className="flex gap-3 pt-2">
-                    <button 
-                        onClick={handleMagicFill}
-                        disabled={isAnalyzing || !input.trim()}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${s.magicBtn}`}
-                    >
+                    <button onClick={handleMagicFill} disabled={isAnalyzing || !input.trim()} className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${s.magicBtn}`}>
                         {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         {isAnalyzing ? 'Analyzing...' : 'Magic Fill'}
                     </button>
-                    <button 
-                        onClick={handleInspireMe}
-                        disabled={isInspiring}
-                        className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm border transition-all ${s.inspireBtn}`}
-                    >
+                    <button onClick={handleInspireMe} disabled={isInspiring} className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm border transition-all ${s.inspireBtn}`}>
                         {isInspiring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
                     </button>
                 </div>
@@ -404,21 +346,35 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <div className="space-y-6 animate-in zoom-in-95 duration-300">
                 <div className={`p-4 rounded-2xl border transition-all duration-500 ${s.draftCard}`}>
                     <div className="flex justify-between items-start mb-2">
-                        <h3 className={`text-lg font-black leading-tight ${s.draftTitle}`}>{draft.title}</h3>
-                        <MapPin className="w-5 h-5 text-red-500" />
+                        {isEditMode ? (
+                           <input 
+                              type="text" 
+                              value={input} 
+                              onChange={(e) => setInput(e.target.value)} 
+                              className={`bg-transparent border-none outline-none text-lg font-black leading-tight w-full ${s.draftTitle}`}
+                           />
+                        ) : (
+                           <h3 className={`text-lg font-black leading-tight ${s.draftTitle}`}>{draft?.title}</h3>
+                        )}
+                        <MapPin className="w-5 h-5 text-red-500 shrink-0" />
                     </div>
-                    <p className={`text-xs leading-relaxed ${s.draftText}`}>{draft.description}</p>
+                    {isEditMode ? (
+                        <textarea 
+                            value={draft?.description || ''} 
+                            onChange={(e) => setDraft(prev => prev ? {...prev, description: e.target.value} : null)}
+                            rows={3}
+                            className={`w-full bg-transparent border-none outline-none text-xs leading-relaxed resize-none ${s.draftText}`}
+                        />
+                    ) : (
+                        <p className={`text-xs leading-relaxed ${s.draftText}`}>{draft?.description}</p>
+                    )}
                 </div>
 
                 <div>
                     <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Category</h4>
                     <div className="grid grid-cols-4 gap-2">
                         {categories.slice(0, 8).map(cat => (
-                            <button 
-                                key={cat} 
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-[9px] font-bold transition-all ${selectedCategory === cat ? s.catActive : s.catInactive}`}
-                            >
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-[9px] font-bold transition-all ${selectedCategory === cat ? s.catActive : s.catInactive}`}>
                                 <CategoryIcon category={cat} className="w-4 h-4" />
                                 <span className="truncate w-full text-center">{cat}</span>
                             </button>
@@ -430,13 +386,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Interests</h4>
                     <div className="flex flex-wrap gap-2">
                         {availableInterests.map(int => (
-                            <button 
-                                key={int}
-                                onClick={() => {
-                                    setSelectedInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int]);
-                                }}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${selectedInterests.includes(int) ? s.tagActive : s.tagInactive}`}
-                            >
+                            <button key={int} onClick={() => setSelectedInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int])} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${selectedInterests.includes(int) ? s.tagActive : s.tagInactive}`}>
                                 #{int}
                             </button>
                         ))}
@@ -446,24 +396,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg bg-blue-500/10 text-blue-600`}>
-                                <Flag className="w-4 h-4" />
-                            </div>
+                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600"><Flag className="w-4 h-4" /></div>
                             <span className={`text-xs font-bold ${s.textPrimary}`}>Target Date</span>
                         </div>
-                        <input 
-                            type="date" 
-                            value={targetDate} 
-                            onChange={(e) => setTargetDate(e.target.value)} 
-                            className={`p-2 rounded-xl border outline-none text-[10px] ${s.input}`} 
-                        />
+                        <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className={`p-2 rounded-xl border outline-none text-[10px] ${s.input}`} />
                     </div>
 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg bg-green-500/10 text-green-600`}>
-                                <CheckCircle2 className="w-4 h-4" />
-                            </div>
+                            <div className="p-2 rounded-lg bg-green-500/10 text-green-600"><CheckCircle2 className="w-4 h-4" /></div>
                             <span className={`text-xs font-bold ${s.textPrimary}`}>Knocked it out?</span>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -490,13 +431,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
         <div className={`p-6 border-t ${s.border} shrink-0 bg-white/50 dark:bg-black/20 backdrop-blur-sm`}>
             <div className="flex gap-3">
-                {draft ? (
+                {draft || isEditMode ? (
                     <>
-                        <button onClick={() => setDraft(null)} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
-                            Change Details
+                        <button onClick={onClose} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
+                            Cancel
                         </button>
-                        <button onClick={handleConfirm} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.confirmBtn}`}>
-                            Just Knock It
+                        <button onClick={handleConfirm} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${s.confirmBtn}`}>
+                            {isEditMode ? <Save className="w-4 h-4" /> : null}
+                            {isEditMode ? 'Save Changes' : 'Just Knock It'}
                         </button>
                     </>
                 ) : (

@@ -220,7 +220,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-sm h-[330px] max-h-[90vh] flex flex-col shadow-2xl scale-100 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-sm h-[550px] max-h-[90vh] flex flex-col shadow-2xl scale-100 overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-red-500" />

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star, Image as ImageIcon } from 'lucide-react';
+import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star, Image as ImageIcon, BarChart3, Activity, Clock } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -14,34 +14,47 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
   const features = [
     {
-        icon: <Map className="w-5 h-5 text-blue-500" />,
-        title: "Extended Itineraries",
-        desc: "Now generates up to 15 top places for city destinations with AI."
+        icon: <BarChart3 className="w-5 h-5 text-indigo-500" />,
+        title: "Next-Gen Analytics",
+        desc: "New YTD Progress and Seasonal Balance charts to visualize your yearly and seasonal trends."
     },
     {
-        icon: <ImageIcon className="w-5 h-5 text-purple-500" />,
-        title: "Visual Trip Planner",
-        desc: "See photos for every stop in your itinerary and get navigation details."
+        icon: <Activity className="w-5 h-5 text-emerald-500" />,
+        title: "Exploration Depth",
+        desc: "Track stop-level completion percentages across your entire itinerary library."
     },
     {
-        icon: <Star className="w-5 h-5 text-yellow-500" />,
-        title: "Must-See Highlights",
-        desc: "Top landmarks are now automatically starred as 'Must See' locations."
+        icon: <Clock className="w-5 h-5 text-orange-500" />,
+        title: "Momentum Profile",
+        desc: "Understand your knockout habits with Weekday vs. Weekend activity breakdowns."
     },
     {
-        icon: <Users className="w-5 h-5 text-green-500" />,
-        title: "Family Buckets",
-        desc: "Assign wishes to family members and filter by person."
+        icon: <Sparkles className="w-5 h-5 text-blue-500" />,
+        title: "Bento Visual Style",
+        desc: "A sleeker, more professional layout with optimized corner radii and compact metrics."
     }
   ];
 
   const history = [
       {
-          date: "Latest Update (v1.7)",
+          date: "Latest Update (v1.8)",
           changes: [
-              "Trip Planner enhancements",
-              "Usability fixes",
-              "Theme redesign"
+              "Complete Dashboard overhaul with advanced data visualization",
+              "Added Year-to-Date (YTD) completion progress chart",
+              "Introduced Seasonal Balance metrics (Spring/Summer/Fall/Winter)",
+              "New 'Dream Age' efficiency metric tracking average completion speed",
+              "Itinerary Stop Mastery: Track global sub-stop progress",
+              "Refined 'Bento Grid' UI: Reduced corner rounding for a professional look",
+              "Optimized mobile dashboard for more compact metric display"
+          ]
+      },
+      {
+          date: "Jan 12, 2026 (v1.7)",
+          changes: [
+              "Trip Planner enhancements with local-only focus",
+              "New AI Magic Fill for itineraries",
+              "Usability fixes for map marker navigation",
+              "Theme redesign for Elsa and Batman modes"
           ]
       },
       {
@@ -80,35 +93,6 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             "Add appropriate images while adding wish list",
             "Add google sign-in test logins & terms, privacy policies"
         ]
-      },
-      {
-        date: "Dec 14, 2025 (v1.2)",
-        changes: [
-            "New Liquid Bucket FAB: Visualizes pending dreams",
-            "UI Refinement: Sharper icons and thinner borders",
-            "Added 'Knock Out' count tooltip on hover",
-            "Performance improvements",
-            "Refined Themes: Introduced Marvel theme",
-            "Family Buckets"
-        ]
-      },
-      { 
-          date: "Dec 7, 2025 (v1.1)", 
-          changes: [
-              "Added Audio Radar (Text-to-Speech) for nearby alerts",
-              "Increased Proximity Range to 2km",
-              "Restructured Settings: New 'Data' tab",
-              "Fixed Mock Data management"
-          ] 
-      },
-      { 
-          date: "Nov 30, 2025 (v1.0)", 
-          changes: [
-              "Initial Release", 
-              "AI Magic Fill", 
-              "Capture Wish lists with location tag",
-              "Conceptualized Idea"
-          ] 
       }
   ];
 
@@ -131,7 +115,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                 <Star className="absolute bottom-2 right-10 w-6 h-6 text-yellow-300 animate-pulse" />
             </div>
 
-            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.7</h2>
+            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.8</h2>
             <p className="text-red-100 text-[10px] font-medium opacity-90 relative z-10 uppercase tracking-widest">
                 {activeTab === 'highlights' ? "Feature Highlights" : "Version History"}
             </p>
@@ -168,7 +152,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
                     {/* Active Indicator Bar */}
                     {activeTab === 'history' && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-blue-500 rounded-r-full" />
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-red-500 rounded-r-full" />
                     )}
                 </button>
             </div>
@@ -192,7 +176,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                             ))}
                         </div>
                         <div className="text-center pt-2">
-                             <p className="text-[9px] text-gray-400">Enjoy the new updates!</p>
+                             <p className="text-[9px] text-gray-400">Enjoy the v1.8 experience!</p>
                         </div>
                     </div>
                 )}
@@ -221,9 +205,6 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
                                     </ul>
                                 </div>
                             ))}
-                        </div>
-                        <div className="pt-6 text-center">
-                            <p className="text-[9px] text-gray-400">That's how far we've come.</p>
                         </div>
                     </div>
                 )}
