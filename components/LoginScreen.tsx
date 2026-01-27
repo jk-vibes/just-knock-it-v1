@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { driveService } from '../services/driveService';
-import { Settings, LogIn, Copy, Shield, Scale } from 'lucide-react';
+import { Settings, LogIn, Copy, Shield, Scale, AlertCircle, Info, ExternalLink, ChevronRight, HelpCircle } from 'lucide-react';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
 
@@ -18,15 +18,14 @@ const BucketLogo = () => (
     </svg>
   );
 
-// Add global type for Google Identity Services
 declare global {
     interface Window {
         google: any;
     }
 }
 
-// Default Client ID for the application
-const DEFAULT_CLIENT_ID = '482285261060-fe5mujd6kn3gos3k6kgoj0kjl63u0cr1.apps.googleusercontent.com';
+// Updated with user-provided Client ID
+const DEFAULT_CLIENT_ID = '620152015803-lfm3kmpnl2tgoih7pet817tb2j4amb7u.apps.googleusercontent.com';
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,10 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [clientId, setClientId] = useState(() => localStorage.getItem('jk_client_id') || DEFAULT_CLIENT_ID);
   
-  // Ref to store the token client instance
   const tokenClient = useRef<any>(null);
-
-  // Get current origin for troubleshooting configuration
   const currentOrigin = window.location.origin;
 
   useEffect(() => {
@@ -47,34 +43,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const initializeGoogleAuth = () => {
         if (window.google?.accounts?.oauth2) {
             try {
-                // Initialize the Token Client for OAuth2 (Authorization)
                 tokenClient.current = window.google.accounts.oauth2.initTokenClient({
                     client_id: clientId,
-                    // Requesting drive.file for backup, plus profile info
                     scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
                     callback: async (tokenResponse: any) => {
                         if (tokenResponse.access_token) {
-                            // 1. Store the Access Token for Drive API calls
                             driveService.setAccessToken(tokenResponse.access_token);
-                            
                             try {
-                                // 2. Fetch User Profile
                                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                                     headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
                                 });
-                                
                                 if (!userInfoResponse.ok) throw new Error("Failed to fetch profile");
-                                
                                 const userInfo = await userInfoResponse.json();
-                                const user: User = {
+                                onLogin({
                                     id: userInfo.sub,
                                     name: userInfo.name,
                                     email: userInfo.email,
                                     photoUrl: userInfo.picture
-                                };
-                                
-                                // 3. Complete Login
-                                onLogin(user);
+                                });
                             } catch (error) {
                                 console.error("Login failed:", error);
                                 alert("Failed to retrieve user profile details.");
@@ -86,7 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                         setIsLoading(false);
                         if (error.type === 'popup_closed') return;
                         console.error("Google Auth Error:", error);
-                        alert("Authentication failed. Please check console.");
+                        setShowConfig(true);
                     }
                 });
             } catch (e) {
@@ -96,23 +82,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     };
 
     initializeGoogleAuth();
-    
-    // Polling to ensure GSI is loaded if script is slow
     const intervalId = setInterval(() => {
         if (tokenClient.current) clearInterval(intervalId);
         else initializeGoogleAuth();
     }, 500);
-
     return () => clearInterval(intervalId);
   }, [onLogin, clientId]);
 
   const handleGoogleLogin = () => {
     if (!tokenClient.current) {
-        alert("Google Sign-In is initializing. Please wait a moment and try again.");
+        alert("Google Sign-In is initializing. Please wait.");
         return;
     }
     setIsLoading(true);
-    // Request access token - triggers the popup
     tokenClient.current.requestAccessToken();
   };
 
@@ -132,21 +114,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
   const copyOrigin = () => {
       navigator.clipboard.writeText(currentOrigin);
-      alert("Origin copied! Paste this into 'Authorized JavaScript origins' in Google Cloud Console.");
+      alert("Origin copied! Add this to your Google Cloud Console.");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4 transition-colors duration-300">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 flex flex-col items-center justify-center p-4 transition-colors duration-300">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-500 border border-gray-100 dark:border-gray-800 overflow-y-auto no-scrollbar max-h-[95vh]">
         <BucketLogo />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">just knock it</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">dream it. bucket it. knock it.</p>
+        <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">just knock it</h1>
+        <p className="text-gray-400 dark:text-gray-500 mb-8 font-medium">dream it. bucket it. knock it.</p>
 
         <div className="space-y-4 w-full">
             <button
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-medium py-3.5 px-4 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
+                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-700 dark:text-white font-bold py-4 px-4 rounded-2xl transition-all shadow-sm hover:shadow-md disabled:opacity-70 group relative overflow-hidden active:scale-95"
             >
                 {isLoading ? (
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
@@ -165,7 +147,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
             <button
                 onClick={handleGuestLogin}
-                className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3.5 px-4 rounded-xl transition-all"
+                className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 px-4 rounded-2xl transition-all active:scale-95"
             >
                 <LogIn className="w-5 h-5" />
                 <span>Continue as Guest</span>
@@ -174,90 +156,123 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="pt-4 flex justify-center">
                 <button 
                     onClick={() => setShowConfig(!showConfig)}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
+                    className={`text-[10px] flex items-center gap-1.5 transition-colors p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 ${showConfig ? 'text-red-500 font-black uppercase tracking-widest' : 'text-gray-400 font-bold hover:text-gray-600'}`}
                 >
-                    <Settings className="w-3 h-3" />
-                    {showConfig ? 'Hide Configuration' : 'Fix Error 400 / Drive / Config ID'}
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    {showConfig ? 'Hide Guide' : 'Fix "Access Blocked / Invalid Request"'}
                 </button>
             </div>
 
             {showConfig && (
-                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 text-left">
-                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
-                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                            1. Your Current Origin
-                        </label>
-                        <div className="flex gap-2">
-                            <code className="flex-grow p-2 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-red-600 dark:text-red-400 truncate">
-                                {currentOrigin}
-                            </code>
-                            <button 
-                                onClick={copyOrigin}
-                                className="p-2 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 transition-colors"
-                                title="Copy Origin"
-                            >
-                                <Copy className="w-3 h-3" />
-                            </button>
+                <div className="bg-red-50 dark:bg-red-950/20 p-6 rounded-[2rem] border border-red-100 dark:border-red-900/30 animate-in fade-in slide-in-from-top-2 text-left">
+                    <div className="flex items-start gap-3 mb-5">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-xl">
+                            <Info className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
                         </div>
-                        <p className="text-[9px] text-gray-400 mt-1 italic">
-                            * Paste this into <strong>"Authorized JavaScript origins"</strong> in Google Console to fix Error 400.
-                        </p>
+                        <div>
+                            <h3 className="text-xs font-black text-red-800 dark:text-red-400 uppercase tracking-widest mb-1">Authorization Guide</h3>
+                            <p className="text-[10px] text-red-700/80 dark:text-red-300/60 leading-relaxed font-medium">
+                                Google blocks access because this website's URL hasn't been added to your Google Project's "Authorized Origins."
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
-                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                            2. Google Drive API Requirement
-                        </label>
-                        <p className="text-[10px] text-gray-600 dark:text-gray-300">
-                            For backups to work, you <strong>MUST</strong> enable the "Google Drive API" in the Google Cloud Console library for this project ID.
-                        </p>
-                    </div>
+                    <div className="space-y-5">
+                        <div className="p-4 bg-white dark:bg-gray-850 rounded-2xl border border-red-100 dark:border-red-900/20 shadow-sm">
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                STEP 1: Copy your current URL
+                            </label>
+                            <div className="flex gap-2">
+                                <code className="flex-grow p-2.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded-xl font-mono text-red-600 dark:text-red-400 truncate border border-gray-100 dark:border-gray-800">
+                                    {currentOrigin}
+                                </code>
+                                <button 
+                                    onClick={copyOrigin}
+                                    className="p-2.5 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors active:scale-90"
+                                >
+                                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                </button>
+                            </div>
+                        </div>
 
-                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                        3. Google Client ID
-                    </label>
-                    <input 
-                        type="text" 
-                        value={clientId}
-                        onChange={(e) => setClientId(e.target.value)}
-                        className="w-full p-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg mb-2 focus:ring-1 focus:ring-red-500 outline-none text-gray-900 dark:text-gray-100"
-                    />
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={handleSaveConfig}
-                            className="flex-1 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                            Save & Reload
-                        </button>
-                        <button 
-                            onClick={() => {
-                                setClientId(DEFAULT_CLIENT_ID);
-                                localStorage.removeItem('jk_client_id');
-                                window.location.reload();
-                            }}
-                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs font-bold rounded-lg hover:bg-gray-300 transition-colors"
-                        >
-                            Reset
-                        </button>
+                        <div className="p-4 bg-white dark:bg-gray-850 rounded-2xl border border-red-100 dark:border-red-900/20 shadow-sm">
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                STEP 2: Configure Console
+                            </label>
+                            <ol className="text-[10px] space-y-2 text-gray-600 dark:text-gray-300 font-medium">
+                                <li className="flex gap-2 items-start">
+                                    <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 text-[8px] font-bold">1</span>
+                                    <span>Go to <strong>APIs & Services > Credentials</strong> in Google Cloud.</span>
+                                </li>
+                                <li className="flex gap-2 items-start">
+                                    <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 text-[8px] font-bold">2</span>
+                                    <span>Edit your <strong>OAuth 2.0 Client ID</strong>.</span>
+                                </li>
+                                <li className="flex gap-2 items-start">
+                                    <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 text-[8px] font-bold">3</span>
+                                    <span>Paste the URL into <strong>"Authorized JavaScript origins"</strong> and Save.</span>
+                                </li>
+                            </ol>
+                            
+                            <a 
+                                href="https://console.cloud.google.com/" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                            >
+                                Open Cloud Console <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                        </div>
+
+                        <div className="p-4 bg-white/50 dark:bg-gray-850/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                OPTIONAL: Use your own Client ID
+                            </label>
+                            <input 
+                                type="text" 
+                                value={clientId}
+                                onChange={(e) => setClientId(e.target.value)}
+                                placeholder="Paste custom Client ID..."
+                                className="w-full p-3 text-[10px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl mb-3 focus:ring-2 focus:ring-red-500/20 outline-none text-gray-900 dark:text-gray-100 font-mono shadow-inner"
+                            />
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={handleSaveConfig}
+                                    className="flex-1 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 transition-all"
+                                >
+                                    Apply
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setClientId(DEFAULT_CLIENT_ID);
+                                        localStorage.removeItem('jk_client_id');
+                                        window.location.reload();
+                                    }}
+                                    className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-200"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
             
-            <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">secure login</span>
-                <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+            <div className="relative flex py-4 items-center">
+                <div className="flex-grow border-t border-gray-100 dark:border-gray-800"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-300 text-[9px] font-black uppercase tracking-[0.3em]">Identity Secure</span>
+                <div className="flex-grow border-t border-gray-100 dark:border-gray-800"></div>
             </div>
         </div>
         
-        <div className="mt-8 text-xs text-gray-400 text-center px-4 space-y-2">
-            <p>By continuing, you agree to our policies.</p>
-            <div className="flex justify-center gap-4">
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-red-500 transition-colors underline underline-offset-2 flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> Privacy Policy
+        <div className="mt-6 text-[10px] text-gray-400 text-center px-4 space-y-4 pb-4">
+            <p className="font-medium">By continuing, you agree to our policies.</p>
+            <div className="flex justify-center gap-8">
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-red-500 transition-colors underline underline-offset-8 font-bold flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" /> Privacy
                 </button>
-                <button onClick={() => setIsTermsOpen(true)} className="hover:text-red-500 transition-colors underline underline-offset-2 flex items-center gap-1">
-                    <Scale className="w-3 h-3" /> Terms of Service
+                <button onClick={() => setIsTermsOpen(true)} className="hover:text-red-500 transition-colors underline underline-offset-8 font-bold flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5" /> Terms
                 </button>
             </div>
         </div>
