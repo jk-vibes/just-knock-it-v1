@@ -2,8 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { BucketItemDraft, ItineraryItem, BucketItem, Coordinates } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const itineraryItemSchema = {
     type: Type.OBJECT,
     properties: {
@@ -43,6 +41,7 @@ const generateImageUrls = (keyword: string): string[] => {
 };
 
 export const analyzeBucketItem = async (input: string, availableCategories: string[], itemType: 'destination' | 'roadtrip' | 'goal' = 'destination'): Promise<BucketItemDraft> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const prompt = itemType === 'goal'
         ? `Analyze the goal: "${input}". Create a plan with actionable steps in the itinerary field. Do not invent a location if one is not implied.`
@@ -50,8 +49,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
            1. Provide exact GPS coordinates for the center of this location.
            2. Generate a full itinerary of 10-15 specific spots.
            3. Focus ONLY on local attractions, hidden gems, and landmarks INSIDE the city area of "${input}". 
-           4. DO NOT suggest places from neighboring cities or different regions. 
-           5. Every stop must be reachable within a short local drive or walk from the city center.`;
+           4. Every stop must be reachable within a short local drive or walk from the city center.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -94,13 +92,12 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
 };
 
 export const generateStatsInsight = async (completedItems: BucketItem[]): Promise<{ title: string; message: string }> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         if (completedItems.length === 0) {
             return { title: "New Journey Starts!", message: "Ready to knock your first dream? Start by adding a destination!" };
         }
-
         const history = completedItems.map(i => ({ title: i.title, cat: i.category, loc: i.locationName }));
-        
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Based on this bucket list history: ${JSON.stringify(history)}. Generate one short, witty, and inspiring "Fun Fact" or "Milestone Achievement". 
@@ -117,7 +114,6 @@ export const generateStatsInsight = async (completedItems: BucketItem[]): Promis
                 }
             }
         });
-
         return JSON.parse(response.text || '{"title": "Keep Knocking!", "message": "You are making amazing progress on your dreams!"}');
     } catch (e) {
         return { title: "Milestone Reached!", message: "You've knocked off another dream! Keep going." };
@@ -125,6 +121,7 @@ export const generateStatsInsight = async (completedItems: BucketItem[]): Promis
 };
 
 export const chatWithGemini = async (query: string, locationContext?: string, bucketListSummary?: string) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const systemInstruction = `You are the "Just Knock It" AI guide. 
         Your goal is to help users fulfill their bucket list dreams.
@@ -143,28 +140,63 @@ export const chatWithGemini = async (query: string, locationContext?: string, bu
             }
         });
 
-        const text = response.text;
+        const text = response.text || "I couldn't generate a response. Please try again.";
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         const urls = groundingChunks?.map((chunk: any) => chunk.web?.uri).filter(Boolean) || [];
 
         return { text, urls };
     } catch (error) {
         console.error("Chat Error:", error);
-        return { text: "I'm having trouble connecting right now. Please try again in a moment.", urls: [] };
+        return { text: "I'm having trouble connecting right now. Please check your connection or try again in a moment.", urls: [] };
     }
 };
 
 export const suggestBucketItem = async (availableCategories: string[], context?: string): Promise<BucketItemDraft> => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Suggest a random famous bucket list item. ${context ? `Ideally related to: ${context}` : ''}`,
-      config: { responseMimeType: "application/json", responseSchema: bucketItemSchema }
-    });
-    const data = JSON.parse(response.text || "{}");
-    return { ...data, type: 'destination', images: generateImageUrls(data.imageKeyword || data.title) };
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Suggest a random, world-famous bucket list adventure or destination. ${context ? `Take inspiration from: ${context}` : ''}
+            Ensure it is iconic, specific, and has a clear location.`,
+            config: { 
+                responseMimeType: "application/json", 
+                responseSchema: bucketItemSchema 
+            }
+        });
+        const data = JSON.parse(response.text || "{}");
+        const hasLocation = data.latitude && data.longitude;
+        
+        return {
+            title: data.title,
+            description: data.description,
+            type: 'destination',
+            locationName: data.locationName,
+            latitude: hasLocation ? data.latitude : undefined,
+            longitude: hasLocation ? data.longitude : undefined,
+            images: data.imageKeyword ? generateImageUrls(data.imageKeyword) : [generateImageUrls(data.title)[0]],
+            category: data.category || availableCategories[0],
+            interests: data.interests || [],
+            bestTimeToVisit: data.bestTimeToVisit || 'Anytime',
+            itinerary: (data.itinerary || []).map((item: any) => ({
+                name: item.name,
+                description: item.description,
+                coordinates: (item.latitude && item.longitude) ? { latitude: item.latitude, longitude: item.longitude } : undefined,
+                completed: false
+            }))
+        };
+    } catch (error) {
+        return { 
+            title: "Northern Lights in Iceland", 
+            description: "Witness the celestial dance of the Aurora Borealis in the dark skies of Iceland.", 
+            type: 'destination', 
+            category: "Nature", 
+            images: generateImageUrls("Northern Lights Iceland") 
+        };
+    }
 };
 
 export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Return ONLY the name of the major city for these coordinates: ${lat}, ${lng}. No punctuation, no state, no country, just the name in UPPERCASE. Example: TOKYO`,
@@ -173,12 +205,11 @@ export const reverseGeocode = async (lat: number, lng: number): Promise<string> 
 };
 
 export const getPlaceDetails = async (placeName: string, context?: string): Promise<ItineraryItem | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Provide full details for: "${placeName}". 
-                 The place MUST be strictly within the city area or immediate surroundings of "${context}". 
-                 If it is in a different city, return an empty object.`,
+      contents: `Provide full details for: "${placeName}". ${context ? `Context: ${context}` : ''}`,
       config: { responseMimeType: "application/json", responseSchema: itineraryItemSchema }
     });
     const data = JSON.parse(response.text || "{}");
@@ -198,12 +229,11 @@ export const getPlaceDetails = async (placeName: string, context?: string): Prom
 };
 
 export const generateItineraryForLocation = async (location: string): Promise<ItineraryItem[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Suggest 15 top spots, hidden gems, and landmarks STRICTLY within the city area of "${location}". 
-                 STRICT CONSTRAINT: DO NOT suggest any places from other cities or towns. 
-                 Focus on local neighborhoods, street markets, city parks, and monuments within "${location}".`,
+      contents: `Suggest 15 top spots, hidden gems, and landmarks STRICTLY within the city area of "${location}".`,
       config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
     const data = JSON.parse(response.text || "[]");
@@ -222,6 +252,7 @@ export const generateItineraryForLocation = async (location: string): Promise<It
 };
 
 export const generateRoadTripStops = async (start: string, end: string): Promise<ItineraryItem[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -244,6 +275,7 @@ export const generateRoadTripStops = async (start: string, end: string): Promise
 };
 
 export const optimizeRouteOrder = async (items: ItineraryItem[]): Promise<ItineraryItem[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     if (items.length <= 2) return items;
     try {
         const response = await ai.models.generateContent({

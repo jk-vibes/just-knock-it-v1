@@ -230,6 +230,12 @@ function App() {
   if (!user) return <LoginScreen onLogin={(u) => setUser(u)} />;
   const isDashboardTab = activeTab === 'stats';
 
+  const handleSuggestItem = (suggestion: BucketItemDraft) => {
+      setEditingItem(suggestion as any);
+      setIsAddModalOpen(true);
+      triggerHaptic('success');
+  };
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-500">
         <header className={`sticky top-0 z-[60] shadow-xl ${themeStyles.headerWrapper}`}>
@@ -262,17 +268,17 @@ function App() {
                     </div>
                     <div className={`flex items-center justify-between px-2 py-1 ${themeStyles.toolbarBg} border-t`}>
                         <div className="flex items-center gap-1">
-                            <button onClick={() => setListFilter(f => f === 'active' ? 'completed' : 'active')} className={`p-2 rounded-xl ${listFilter === 'completed' ? 'text-green-600 bg-green-100' : 'opacity-60'}`}><ListChecks className="w-5 h-5" /></button>
-                            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-xl ${isSearchOpen ? 'bg-red-500 text-white' : 'opacity-60'}`}><Search className="w-5 h-5" /></button>
-                            <button onClick={() => setActiveTab('map')} className={`p-2 rounded-xl ${activeTab === 'map' ? 'bg-orange-500 text-white' : 'opacity-60'}`}><MapIcon className="w-5 h-5" /></button>
+                            <button onClick={() => setListFilter(f => f === 'active' ? 'completed' : 'active')} className={`p-2 rounded-xl transition-colors ${listFilter === 'completed' ? 'text-green-600 bg-green-100' : `opacity-60 ${themeStyles.toolbarText}`}`}><ListChecks className="w-5 h-5" /></button>
+                            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-xl transition-colors ${isSearchOpen ? 'bg-red-500 text-white' : `opacity-60 ${themeStyles.toolbarText}`}`}><Search className="w-5 h-5" /></button>
+                            <button onClick={() => setActiveTab('map')} className={`p-2 rounded-xl transition-colors ${activeTab === 'map' ? 'bg-orange-500 text-white' : `opacity-60 ${themeStyles.toolbarText}`}`}><MapIcon className="w-5 h-5" /></button>
                         </div>
                         <div className="flex items-center -space-x-2">
                             <button onClick={() => setSelectedFamilyMember('All')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center z-0 ${selectedFamilyMember === 'All' ? 'border-white bg-slate-600' : 'border-slate-200 opacity-60 bg-slate-400'}`}><Users className="w-3 h-3 text-white" /></button>
                             {familyMembers.map((m, i) => <button key={m} onClick={() => setSelectedFamilyMember(m)} className={`w-8 h-8 rounded-full border-2 text-[10px] font-bold text-white ${selectedFamilyMember === m ? 'border-white scale-125 z-10 shadow-lg' : 'border-slate-200 opacity-80'} ${getAvatarColor(m)}`}>{getInitials(m)}</button>)}
                         </div>
                         <div className="flex gap-1">
-                            <button className={`p-2 rounded-xl ${!isCompact ? 'bg-slate-100 scale-110' : 'opacity-60'}`} onClick={() => setIsCompact(!isCompact)}>{isCompact ? <List className="w-5 h-5" /> : <AlignLeft className="w-5 h-5" />}</button>
-                            <button onClick={() => setSortBy(s => s === 'date' ? 'distance' : 'date')} className={`p-2 rounded-xl ${sortBy === 'distance' ? 'bg-slate-100 scale-110' : 'opacity-60'}`}><ArrowUpDown className="w-5 h-5" /></button>
+                            <button className={`p-2 rounded-xl transition-colors ${!isCompact ? 'bg-slate-100 scale-110' : `opacity-60 ${themeStyles.toolbarText}`}`} onClick={() => setIsCompact(!isCompact)}>{isCompact ? <List className="w-5 h-5" /> : <AlignLeft className="w-5 h-5" />}</button>
+                            <button onClick={() => setSortBy(s => s === 'date' ? 'distance' : 'date')} className={`p-2 rounded-xl transition-colors ${sortBy === 'distance' ? 'bg-slate-100 scale-110' : `opacity-60 ${themeStyles.toolbarText}`}`}><ArrowUpDown className="w-5 h-5" /></button>
                         </div>
                     </div>
                 </>
@@ -282,7 +288,7 @@ function App() {
             {plannerItem ? (
                  <div className="flex-1 w-full relative h-full animate-in fade-in-scale duration-500"><TripPlanner item={plannerItem} onClose={() => setPlannerItem(null)} onUpdateItem={(u) => setItems(prev => prev.map(i => i.id === u.id ? u : i))} onAddSeparateItem={(n) => setItems(p => [n, ...p])} userLocation={userLocation} theme={settings.theme} travelMode={settings.travelMode} /></div>
             ) : isDashboardTab ? (
-                 <Dashboard onBack={() => setActiveTab('list')} items={items} theme={settings.theme} aiInsight={latestAiInsight} onNavigateToItem={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} currentCity={currentCity} />
+                 <Dashboard onBack={() => setActiveTab('list')} items={items} theme={settings.theme} aiInsight={latestAiInsight} onNavigateToItem={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} currentCity={currentCity} onSuggestItem={handleSuggestItem} />
             ) : activeTab === 'list' ? (
                 listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-4">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item, idx) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={() => setItems(p => p.filter(x => x.id !== item.id))} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={setSearchQuery} />)}</div>
             ) : <div className="h-[75vh] rounded-3xl overflow-hidden shadow-xl relative animate-in fade-in duration-700"><MapView items={displayItems} userLocation={userLocation} proximityRange={settings.proximityRange} onMarkerClick={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} /></div>}
@@ -296,7 +302,7 @@ function App() {
                 )}
             </>
         )}
-        <AddItemModal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }} onAdd={(d) => { const n = { id: editingItem?.id || crypto.randomUUID(), ...d, completed: d.isCompleted || false, createdAt: editingItem?.createdAt || Date.now(), owner: 'Me' }; if(editingItem) setItems(p => p.map(i => i.id === n.id ? n : i)); else setItems(p => [n, ...p]); }} categories={categories} availableInterests={interests} items={items} initialData={editingItem} mode={editingItem ? 'edit' : 'add'} editingId={editingItem?.id} theme={settings.theme} />
+        <AddItemModal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }} onAdd={(d) => { const n = { id: editingItem?.id || crypto.randomUUID(), ...d, completed: d.isCompleted || false, createdAt: editingItem?.createdAt || Date.now(), owner: 'Me' }; if(editingItem && (editingItem as any).id) setItems(p => p.map(i => i.id === n.id ? n : i)); else setItems(p => [n, ...p]); }} categories={categories} availableInterests={interests} items={items} initialData={editingItem} mode={editingItem && (editingItem as any).id ? 'edit' : 'add'} editingId={(editingItem as any)?.id} theme={settings.theme} />
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} onClearData={() => setItems([])} onClearMockData={() => setItems(prev => prev.filter(i => !MOCK_BUCKET_ITEMS.find(m => m.id === i.id)))} onAddMockData={() => setItems(prev => [...prev, ...MOCK_BUCKET_ITEMS])} categories={categories} interests={interests} familyMembers={familyMembers} onAddCategory={(c) => setCategories(p => [...p, c])} onRemoveCategory={(c) => setCategories(p => p.filter(x => x !== c))} onAddFamilyMember={(m) => setFamilyMembers(p => [...p, m])} onRemoveFamilyMember={(m) => setFamilyMembers(p => p.filter(x => x !== m))} onAddInterest={(i) => setInterests(p => [...p, i])} onRemoveInterest={(i) => setInterests(p => p.filter(x => x !== i))} onLogout={() => setUser(null)} items={items} onRestore={setItems} onRestartTour={() => setIsTourActive(true)} />
         <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} onClearAll={() => setNotifications([])} />
         <CompleteDateModal isOpen={!!completingItemId} onClose={() => setCompletingItemId(null)} onConfirm={(date) => { setItems(prev => prev.map(i => i.id === completingItemId ? {...i, completed: true, completedAt: date} : i)); setCompletingItemId(null); triggerHaptic('success'); }} itemTitle={items.find(i => i.id === completingItemId)?.title} />

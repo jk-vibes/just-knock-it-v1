@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, 
   Sparkles, 
@@ -26,11 +26,16 @@ import {
   Snowflake,
   SunMedium,
   Route,
-  BarChart
+  BarChart,
+  Lightbulb,
+  Loader2,
+  Plus
 } from 'lucide-react';
-import { BucketItem, Theme } from '../types';
+import { BucketItem, BucketItemDraft, Theme } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { CategoryIcon } from './CategoryIcon';
+import { suggestBucketItem } from '../services/geminiService';
+import { triggerHaptic } from '../utils/haptics';
 
 interface DashboardProps {
   onBack: () => void;
@@ -40,6 +45,7 @@ interface DashboardProps {
   onNavigateToItem?: (id: string) => void;
   onFilterAction?: (query: string, filterType: 'active' | 'completed') => void;
   currentCity?: string;
+  onSuggestItem: (suggestion: BucketItemDraft) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
@@ -49,8 +55,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   aiInsight, 
   onNavigateToItem, 
   onFilterAction,
-  currentCity
+  currentCity,
+  onSuggestItem
 }) => {
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [suggestion, setSuggestion] = useState<BucketItemDraft | null>(null);
+
   const stats = useMemo(() => {
     const completed = items.filter(i => i.completed).sort((a, b) => {
         const dateA = typeof a.completedAt === 'number' ? a.completedAt : 0;
@@ -141,6 +151,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
   }, [items]);
 
+  const handleDiscover = async () => {
+    setIsDiscovering(true);
+    triggerHaptic('light');
+    try {
+        const categories = items.map(i => i.category).filter(Boolean) as string[];
+        const res = await suggestBucketItem(categories.length > 0 ? categories : ['Adventure']);
+        setSuggestion(res);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setIsDiscovering(false);
+    }
+  };
+
   const s = useMemo(() => {
     switch(theme) {
         case 'elsa': return { 
@@ -155,7 +179,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           badgeBg: 'bg-white/95',
           badgeText: 'text-orange-600',
           badgeLabel: 'text-cyan-600',
-          badgeBorder: 'border-orange-200'
+          badgeBorder: 'border-orange-200',
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(249,115,22,0.3)]'
         };
         case 'batman': return { 
           card: 'bg-gray-950 border-gray-800 backdrop-blur-xl rounded-xl', 
@@ -169,7 +194,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           badgeBg: 'bg-yellow-500',
           badgeText: 'text-black',
           badgeLabel: 'text-gray-400',
-          badgeBorder: 'border-yellow-600'
+          badgeBorder: 'border-yellow-600',
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(0,0,0,0.5)]'
         };
         default: return { 
           card: 'bg-white border-slate-200 backdrop-blur-xl rounded-xl', 
@@ -183,7 +209,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           badgeBg: 'bg-white',
           badgeText: 'text-red-600',
           badgeLabel: 'text-slate-400',
-          badgeBorder: 'border-red-100'
+          badgeBorder: 'border-red-100',
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(239,68,68,0.2)]'
         };
     }
   }, [theme]);
@@ -194,32 +221,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-black animate-in fade-in duration-500 overflow-hidden">
         {/* Compact Hero Header */}
         <div className="px-4 pt-4 pb-0 shrink-0 relative">
-          <div className={`px-5 py-4 flex items-center justify-between bg-gradient-to-br ${s.headerBg} text-white shadow-xl rounded-xl border border-white/10 relative overflow-hidden group min-h-[90px]`}>
-            <div className="absolute top-0 left-0 p-6 opacity-5 pointer-events-none">
-                <Zap className="w-20 h-20" />
+          <div className={`px-5 py-3 flex items-center justify-between bg-gradient-to-br ${s.headerBg} text-white shadow-xl rounded-xl border border-white/10 relative overflow-hidden group min-h-[75px]`}>
+            <div className="absolute top-0 left-0 p-4 opacity-5 pointer-events-none">
+                <Zap className="w-16 h-16" />
             </div>
             
             <div className="flex flex-col relative z-10">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <Activity className="w-3 h-3 text-red-400 animate-pulse" />
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Life Progress</h2>
+                    <Activity className="w-2.5 h-2.5 text-red-400 animate-pulse" />
+                    <h2 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80">Life Progress</h2>
                 </div>
-                <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black">{Math.round(completionRate)}%</span>
-                    <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Achieved</span>
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black">{Math.round(completionRate)}%</span>
+                    <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Achieved</span>
                 </div>
+            </div>
+
+            <div className="relative z-10 opacity-30">
+               <Trophy className="w-8 h-8" />
             </div>
           </div>
 
-          {/* City Badge - Positioned at the bottom-right corner just below the header pane */}
+          {/* 3D Stamp City Badge */}
           {currentCity && (
-            <div className="absolute -bottom-2.5 right-8 z-30 flex items-center gap-1.5 animate-in slide-in-from-right-4 duration-700">
-                <span className={`text-[8px] font-black uppercase tracking-tighter ${s.badgeLabel} drop-shadow-sm`}>
-                    Current City:
-                </span>
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full shadow-lg border ${s.badgeBg} ${s.badgeBorder} transition-all hover:scale-105 cursor-default`}>
+            <div className={`absolute -bottom-2 right-8 z-30 transition-all transform rotate-[-3deg] active:scale-95 duration-500 animate-in slide-in-from-right-4`}>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border-2 ${s.badgeBg} ${s.badgeBorder} ${s.stampShadow} transition-all cursor-default`}>
                   <MapPin className={`w-2.5 h-2.5 ${s.badgeText}`} />
-                  <span className={`text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${s.badgeText}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${s.badgeText} font-mono`}>
                     {currentCity}
                   </span>
                 </div>
@@ -255,6 +283,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
+            {/* AI Insight / Intelligence Pulse */}
             {aiInsight && (
               <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-4 rounded-xl text-white shadow-lg relative overflow-hidden group active:scale-[0.99] transition-transform">
                   <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/5 rounded-full" />
@@ -268,6 +297,61 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <p className="text-[10px] text-white/70 leading-relaxed italic line-clamp-2">"{aiInsight.message}"</p>
               </div>
             )}
+
+            {/* Magic Discovery Card */}
+            <div className={`p-5 ${s.card} relative overflow-hidden group`}>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">Daily Discovery</h3>
+                    <Lightbulb className={`w-3.5 h-3.5 ${s.accent}`} />
+                </div>
+                
+                {suggestion ? (
+                    <div className="animate-in zoom-in-95 duration-500">
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0 border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                                {suggestion.images && suggestion.images[0] ? (
+                                    <img src={suggestion.images[0]} className="w-full h-full object-cover" />
+                                ) : (
+                                    <Globe className={`w-6 h-6 ${s.accent}`} />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="text-[12px] font-black text-gray-900 dark:text-white truncate leading-tight">{suggestion.title}</h4>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{suggestion.locationName}</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-5 line-clamp-2 leading-relaxed italic">
+                            "{suggestion.description}"
+                        </p>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => onSuggestItem(suggestion)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${s.btnPrimary}`}
+                            >
+                                <Plus className="w-3 h-3" /> Add to List
+                            </button>
+                            <button 
+                                onClick={() => { setSuggestion(null); handleDiscover(); }}
+                                className="px-3 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 transition-colors"
+                            >
+                                <RefreshCwIcon className="w-3 h-3" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <p className="text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-widest">Find your next obsession</p>
+                        <button 
+                            onClick={handleDiscover}
+                            disabled={isDiscovering}
+                            className={`flex items-center gap-3 px-6 py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50`}
+                        >
+                            {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            Generate Idea
+                        </button>
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className={`p-4 ${s.card}`}>
@@ -436,4 +520,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
 const HistoryIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+);
+
+const RefreshCwIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 );
