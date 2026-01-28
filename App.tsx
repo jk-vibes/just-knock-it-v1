@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Map as MapIcon, Settings, Bell, Radar, LayoutList, Trophy, Circle, LogOut, Users, ArrowUpDown, Filter, ChevronDown, Menu, Share2, User as UserIcon, SlidersHorizontal, AlignLeft, List, Search, X, ListChecks, BarChart3, Sparkles, MapPin, Shield, Zap, Sun as SunIcon, Target } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
@@ -127,7 +126,6 @@ function App() {
 
   const updateCityName = async (coords: Coordinates) => {
     try {
-        // Fix: reverseGeocode now expects a single Coordinates object
         const city = await reverseGeocode(coords);
         if (city) setCurrentCity(city);
     } catch (e) { console.warn("City name error", e); }
@@ -151,7 +149,8 @@ function App() {
             type: notifType 
         }, ...prev]);
 
-        toast.info(smartData.message, 5000);
+        // Persistent toast (0 duration) with "JK Smart Notifier" title
+        toast.info(smartData.message, 0, "JK Smart Notifier");
 
         if (settings.notificationsEnabled) {
             sendNotification(smartData.title, smartData.message, 'jk-smart');
