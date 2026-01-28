@@ -18,13 +18,15 @@ import { CompleteDateModal } from './components/CompleteDateModal';
 import { Dashboard } from './components/Dashboard';
 import { ProfileMenu } from './components/ProfileMenu';
 import { ChatbotModal } from './components/ChatbotModal';
+import { Toaster } from './components/Toaster';
 import { MOCK_BUCKET_ITEMS } from './utils/mockData';
 import { calculateDistance, requestNotificationPermission, sendNotification, speak } from './utils/geo';
 import { triggerHaptic } from './utils/haptics';
 import { driveService } from './services/driveService';
 import { generateStatsInsight, reverseGeocode } from './services/geminiService';
+import { toast } from './utils/toast';
 
-const APP_VERSION = 'v1.8';
+const APP_VERSION = 'v1.9';
 
 const LiquidBucket = ({ theme, isFab = false, percent = 50, label = "JK" }: { theme: Theme | 'brand-red', isFab?: boolean, percent?: number, label?: string }) => {
     const themes = {
@@ -190,6 +192,7 @@ function App() {
             if (distance <= settings.proximityRange && now - (history[item.id] || 0) > 86400000) {
                 if (settings.voiceAlertsEnabled) speak(`You are near ${item.title}`);
                 if (settings.notificationsEnabled) sendNotification(`Near ${item.title}!`, `${(distance/1000).toFixed(1)}km away!`, item.id);
+                toast.info(`Near ${item.title}! Check your list.`);
                 triggerHaptic('heavy');
                 setNotifications(prev => [{ id: crypto.randomUUID(), title: `Near ${item.title}`, message: `${(distance/1000).toFixed(1)}km away.`, timestamp: now, read: false, type: 'location', relatedItemId: item.id }, ...prev]);
                 history[item.id] = now;
@@ -236,8 +239,40 @@ function App() {
       triggerHaptic('success');
   };
 
+  const handleAddOrEditItem = (d: BucketItemDraft) => {
+      const n = { 
+          id: editingItem?.id || crypto.randomUUID(), 
+          ...d, 
+          completed: d.isCompleted || false, 
+          createdAt: editingItem?.createdAt || Date.now(), 
+          owner: 'Me' 
+      };
+      
+      if(editingItem && (editingItem as any).id) {
+          setItems(p => p.map(i => i.id === n.id ? n : i));
+          toast.success("Dream updated successfully!");
+      } else {
+          setItems(p => [n, ...p]);
+          toast.success("New dream added to your bucket! ✨");
+      }
+  };
+
+  const handleDeleteItem = (id: string) => {
+      if (confirm("Remove this dream from your list?")) {
+          setItems(p => p.filter(x => x.id !== id));
+          toast.warning("Dream removed.");
+          triggerHaptic('warning');
+      }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    toast.info("Logged out successfully.");
+  };
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-500">
+        <Toaster theme={settings.theme} />
         <header className={`sticky top-0 z-[60] shadow-xl ${themeStyles.headerWrapper}`}>
             <div className={`flex items-center justify-between px-2 pt-3 pb-2 ${themeStyles.topRowBg} ${themeStyles.topRowText} ${themeStyles.topRowBorder}`}>
                 <div className="flex flex-col items-start relative">
@@ -253,7 +288,7 @@ function App() {
                     <button onClick={() => setIsNotificationsOpen(true)} className={`${themeStyles.headerBtn} relative`}><Bell className="w-5 h-5" />{notifications.filter(n => !n.read).length > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white px-1">{notifications.filter(n => !n.read).length}</span>}</button>
                     <div className="relative">
                         <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className={themeStyles.headerProfileBtn}><img src={user.photoUrl || "https://ui-avatars.com/api/?name=User"} className="w-full h-full object-cover" /></button>
-                        {isProfileMenuOpen && <ProfileMenu user={user} theme={settings.theme} onLogout={() => setUser(null)} onClose={() => setIsProfileMenuOpen(false)} onOpenSettings={() => setIsSettingsOpen(true)} />}
+                        {isProfileMenuOpen && <ProfileMenu user={user} theme={settings.theme} onLogout={handleLogout} onClose={() => setIsProfileMenuOpen(false)} onOpenSettings={() => setIsSettingsOpen(true)} />}
                     </div>
                 </div>
             </div>
@@ -273,7 +308,7 @@ function App() {
                             <button onClick={() => setActiveTab('map')} className={`p-2 rounded-xl transition-colors ${activeTab === 'map' ? 'bg-orange-500 text-white' : `opacity-60 ${themeStyles.toolbarText}`}`}><MapIcon className="w-5 h-5" /></button>
                         </div>
                         <div className="flex items-center -space-x-2">
-                            <button onClick={() => setSelectedFamilyMember('All')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center z-0 ${selectedFamilyMember === 'All' ? 'border-white bg-slate-600' : 'border-slate-200 opacity-60 bg-slate-400'}`}><Users className="w-3 h-3 text-white" /></button>
+                            <button onClick={() => setSelectedFamilyMember('All')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center z-0 ${selectedFamilyMember === 'All' ? 'border-white bg-slate-600' : 'border-slate-200 opacity-60 bg-slate-400'}`}><Users className="w-3 3 text-white" /></button>
                             {familyMembers.map((m, i) => <button key={m} onClick={() => setSelectedFamilyMember(m)} className={`w-8 h-8 rounded-full border-2 text-[10px] font-bold text-white ${selectedFamilyMember === m ? 'border-white scale-125 z-10 shadow-lg' : 'border-slate-200 opacity-80'} ${getAvatarColor(m)}`}>{getInitials(m)}</button>)}
                         </div>
                         <div className="flex gap-1">
@@ -290,7 +325,7 @@ function App() {
             ) : isDashboardTab ? (
                  <Dashboard onBack={() => setActiveTab('list')} items={items} theme={settings.theme} aiInsight={latestAiInsight} onNavigateToItem={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} currentCity={currentCity} onSuggestItem={handleSuggestItem} />
             ) : activeTab === 'list' ? (
-                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-4">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item, idx) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={() => setItems(p => p.filter(x => x.id !== item.id))} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={setSearchQuery} />)}</div>
+                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-4">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item, idx) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={handleDeleteItem} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={setSearchQuery} />)}</div>
             ) : <div className="h-[75vh] rounded-3xl overflow-hidden shadow-xl relative animate-in fade-in duration-700"><MapView items={displayItems} userLocation={userLocation} proximityRange={settings.proximityRange} onMarkerClick={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} /></div>}
         </main>
         {!plannerItem && (
@@ -302,10 +337,10 @@ function App() {
                 )}
             </>
         )}
-        <AddItemModal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }} onAdd={(d) => { const n = { id: editingItem?.id || crypto.randomUUID(), ...d, completed: d.isCompleted || false, createdAt: editingItem?.createdAt || Date.now(), owner: 'Me' }; if(editingItem && (editingItem as any).id) setItems(p => p.map(i => i.id === n.id ? n : i)); else setItems(p => [n, ...p]); }} categories={categories} availableInterests={interests} items={items} initialData={editingItem} mode={editingItem && (editingItem as any).id ? 'edit' : 'add'} editingId={(editingItem as any)?.id} theme={settings.theme} />
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} onClearData={() => setItems([])} onClearMockData={() => setItems(prev => prev.filter(i => !MOCK_BUCKET_ITEMS.find(m => m.id === i.id)))} onAddMockData={() => setItems(prev => [...prev, ...MOCK_BUCKET_ITEMS])} categories={categories} interests={interests} familyMembers={familyMembers} onAddCategory={(c) => setCategories(p => [...p, c])} onRemoveCategory={(c) => setCategories(p => p.filter(x => x !== c))} onAddFamilyMember={(m) => setFamilyMembers(p => [...p, m])} onRemoveFamilyMember={(m) => setFamilyMembers(p => p.filter(x => x !== m))} onAddInterest={(i) => setInterests(p => [...p, i])} onRemoveInterest={(i) => setInterests(p => p.filter(x => x !== i))} onLogout={() => setUser(null)} items={items} onRestore={setItems} onRestartTour={() => setIsTourActive(true)} />
-        <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} onClearAll={() => setNotifications([])} />
-        <CompleteDateModal isOpen={!!completingItemId} onClose={() => setCompletingItemId(null)} onConfirm={(date) => { setItems(prev => prev.map(i => i.id === completingItemId ? {...i, completed: true, completedAt: date} : i)); setCompletingItemId(null); triggerHaptic('success'); }} itemTitle={items.find(i => i.id === completingItemId)?.title} />
+        <AddItemModal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }} onAdd={handleAddOrEditItem} categories={categories} availableInterests={interests} items={items} initialData={editingItem} mode={editingItem && (editingItem as any).id ? 'edit' : 'add'} editingId={(editingItem as any)?.id} theme={settings.theme} />
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} onClearData={() => { setItems([]); toast.warning("All local data cleared."); }} onClearMockData={() => { setItems(prev => prev.filter(i => !MOCK_BUCKET_ITEMS.find(m => m.id === i.id))); toast.info("Mock data removed."); }} onAddMockData={() => { setItems(prev => [...prev, ...MOCK_BUCKET_ITEMS]); toast.success("Mock data loaded."); }} categories={categories} interests={interests} familyMembers={familyMembers} onAddCategory={(c) => { setCategories(p => [...p, c]); toast.success(`Category "${c}" added.`); }} onRemoveCategory={(c) => { setCategories(p => p.filter(x => x !== c)); toast.info(`Category "${c}" removed.`); }} onAddFamilyMember={(m) => { setFamilyMembers(p => [...p, m]); toast.success(`Family member "${m}" added.`); }} onRemoveFamilyMember={(m) => { setFamilyMembers(p => p.filter(x => x !== m)); toast.info(`Family member "${m}" removed.`); }} onAddInterest={(i) => { setInterests(p => [...p, i]); toast.success(`Interest "${i}" added.`); }} onRemoveInterest={(i) => { setInterests(p => p.filter(x => x !== i)); toast.info(`Interest "${i}" removed.`); }} onLogout={handleLogout} items={items} onRestore={(imported) => { setItems(imported); toast.success("Data restored successfully!"); }} onRestartTour={() => { setIsTourActive(true); toast.info("Tour restarted."); }} />
+        <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} onMarkAllRead={() => { setNotifications(prev => prev.map(n => ({...n, read: true}))); toast.info("All caught up!"); }} onClearAll={() => { setNotifications([]); toast.info("Notifications cleared."); }} />
+        <CompleteDateModal isOpen={!!completingItemId} onClose={() => setCompletingItemId(null)} onConfirm={(date) => { setItems(prev => prev.map(i => i.id === completingItemId ? {...i, completed: true, completedAt: date} : i)); setCompletingItemId(null); triggerHaptic('success'); toast.success("Dream Knocked Out! 🎉"); }} itemTitle={items.find(i => i.id === completingItemId)?.title} />
         {galleryItem && <ImageGalleryModal item={galleryItem} onClose={() => setGalleryItem(null)} />}
         <ChangelogModal isOpen={isChangelogOpen} onClose={() => setIsChangelogOpen(false)} />
         <OnboardingTour isActive={isTourActive} onComplete={() => { setIsTourActive(false); localStorage.setItem('jk_tour_seen', 'true'); }} />

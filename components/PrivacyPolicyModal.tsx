@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Shield, Lock, Eye, Server, MapPin, HardDrive } from 'lucide-react';
+import { X, Shield, Lock, Eye, Server, MapPin, HardDrive, UserCheck, Trash2 } from 'lucide-react';
 
 interface PrivacyPolicyModalProps {
   isOpen: boolean;
@@ -12,60 +12,75 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[80vh]">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700 shrink-0 bg-gray-50 dark:bg-gray-900/50">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-red-500" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Privacy Policy</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[85vh] border border-gray-100 dark:border-gray-700">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-500 rounded-xl shadow-lg shadow-red-500/20">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-none">Privacy Policy</h2>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Data Safety & Trust</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          <button 
+            onClick={onClose} 
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all active:scale-90"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto no-scrollbar space-y-6 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-          <section>
-            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-blue-500" /> Information We Collect
+        {/* Content */}
+        <div className="p-8 overflow-y-auto no-scrollbar space-y-8 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+          <section className="space-y-3">
+            <h3 className="text-gray-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <Eye className="w-4 h-4 text-blue-500" /> Data Collection
             </h3>
-            <p><strong>Just Knock</strong> ("the App") is committed to protecting your privacy. We collect the following data:</p>
-            <ul className="list-disc ml-5 mt-2 space-y-1">
-              <li><strong>Google Profile Info:</strong> Your name, email, and profile picture provided via Google Sign-In to create your personalized account.</li>
-              <li><strong>Bucket List Data:</strong> The titles, descriptions, and categories of items you add to your list.</li>
-              <li><strong>Location Data:</strong> Geolocation coordinates for your bucket list items.</li>
-            </ul>
+            <p className="pl-6 border-l-2 border-blue-500/20">
+              <strong>Just Knock</strong> collects minimal data to enhance your experience. This includes your <strong>Google Profile</strong> (name, email, photo) for identification, <strong>Bucket List Content</strong> (titles, notes), and <strong>Location Tags</strong>.
+            </p>
           </section>
 
-          <section>
-            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-red-500" /> Location Services
+          <section className="space-y-3">
+            <h3 className="text-gray-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-red-500" /> Geolocation & Radar
             </h3>
-            <p>The App uses your device's real-time location to provide the <strong>Proximity Radar</strong> feature. Your real-time location is processed <strong>only on your device</strong> and is never uploaded to our servers or stored permanently. Location coordinates for your "Dreams" are stored in your private database (locally or in your Google Drive).</p>
+            <p className="pl-6 border-l-2 border-red-500/20">
+              Real-time location data is used for the <strong>Proximity Radar</strong>. This data is processed <strong>locally on your device</strong>. We do not store your live location history on our servers. Location coordinates for your "Dreams" are stored in your encrypted local database or Google Drive.
+            </p>
           </section>
 
-          <section>
-            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
+          <section className="space-y-3">
+            <h3 className="text-gray-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
               <HardDrive className="w-4 h-4 text-purple-500" /> Google Drive Integration
             </h3>
-            <p>If you choose to use the Backup feature, the App requests the <code>drive.file</code> scope. This allows the App to only see and manage files that <strong>it creates</strong> (your backup JSON). We cannot access, view, or delete any other files in your Google Drive.</p>
+            <p className="pl-6 border-l-2 border-purple-500/20">
+              The App uses the <code>drive.file</code> scope to manage backups. This grants access <strong>only</strong> to files created by this application. We cannot see, read, or delete any other documents in your Drive. This integration is vital for data persistence across devices.
+            </p>
           </section>
 
-          <section>
-            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-green-500" /> Data Sharing & Security
+          <section className="space-y-3">
+            <h3 className="text-gray-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-green-500" /> User Consent
             </h3>
-            <p>We do not sell your personal data. Your bucket list items may be processed by the <strong>Google Gemini API</strong> to automatically categorize and provide suggestions, but this data is not used for training models without your consent. We use industry-standard encryption for local storage and secure OAuth 2.0 protocols for Google integrations.</p>
+            <p className="pl-6 border-l-2 border-green-500/20">
+              By using Google Sign-In or creating a local entry, you grant us consent to process your data for the application's core functions. You can revoke this consent at any time by logging out and disconnecting your Google Account from your security settings.
+            </p>
           </section>
 
-          <section>
-            <h3 className="text-gray-900 dark:text-white font-bold mb-2 flex items-center gap-2">
-              <Server className="w-4 h-4 text-gray-500" /> Cookies & Local Storage
+          <section className="space-y-3">
+            <h3 className="text-gray-900 dark:text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-orange-500" /> Data Deletion
             </h3>
-            <p>We use local storage to keep you logged in and to store your preferences (Theme, Radar range, etc.) for a better user experience.</p>
+            <p className="pl-6 border-l-2 border-orange-500/20">
+              You maintain full control. You can delete individual dreams, clear your local database, or delete your backup from Google Drive directly through the <strong>Data Settings</strong> panel in the app.
+            </p>
           </section>
 
-          <div className="pt-6 border-t border-gray-100 dark:border-gray-700 text-center">
-            <p className="text-[10px] text-gray-400">Last updated: May 2024</p>
+          <div className="pt-8 border-t border-gray-100 dark:border-gray-700 text-center">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Updated January 2026 • v1.9</p>
           </div>
         </div>
       </div>

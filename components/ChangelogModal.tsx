@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { X, CheckCircle2, Rocket, Map, Cloud, Sparkles, History, Users, Star, Image as ImageIcon, BarChart3, Activity, Clock } from 'lucide-react';
+import React from 'react';
+import { X, Rocket, Star, Calendar, Hash, ChevronRight } from 'lucide-react';
 
 interface ChangelogModalProps {
   isOpen: boolean;
@@ -8,206 +8,135 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'highlights' | 'history'>('highlights');
-
   if (!isOpen) return null;
-
-  const features = [
-    {
-        icon: <BarChart3 className="w-5 h-5 text-indigo-500" />,
-        title: "Next-Gen Analytics",
-        desc: "New YTD Progress and Seasonal Balance charts to visualize your yearly and seasonal trends."
-    },
-    {
-        icon: <Activity className="w-5 h-5 text-emerald-500" />,
-        title: "Exploration Depth",
-        desc: "Track stop-level completion percentages across your entire itinerary library."
-    },
-    {
-        icon: <Clock className="w-5 h-5 text-orange-500" />,
-        title: "Momentum Profile",
-        desc: "Understand your knockout habits with Weekday vs. Weekend activity breakdowns."
-    },
-    {
-        icon: <Sparkles className="w-5 h-5 text-blue-500" />,
-        title: "Bento Visual Style",
-        desc: "A sleeker, more professional layout with optimized corner radii and compact metrics."
-    }
-  ];
 
   const history = [
       {
-          date: "Latest Update (v1.8)",
+          version: "v1.9",
+          date: "Jan 18, 2026",
+          title: "Legal & Safety Update",
+          changes: [
+              "Integrated comprehensive Privacy Policy and Terms of Service",
+              "Added clear data collection and Google Drive usage disclosures",
+              "Added proximity radar safety guidelines for location-aware features",
+              "Refined Login UI with explicit policy consent links"
+          ]
+      },
+      {
+          version: "v1.8",
+          date: "Jan 15, 2026",
+          title: "Analytics & UI Polish",
           changes: [
               "Complete Dashboard overhaul with advanced data visualization",
               "Added Year-to-Date (YTD) completion progress chart",
               "Introduced Seasonal Balance metrics (Spring/Summer/Fall/Winter)",
-              "New 'Dream Age' efficiency metric tracking average completion speed",
+              "New efficiency metric tracking average completion speed",
               "Itinerary Stop Mastery: Track global sub-stop progress",
-              "Refined 'Bento Grid' UI: Reduced corner rounding for a professional look",
-              "Optimized mobile dashboard for more compact metric display"
+              "Refined 'Bento Grid' UI for a professional, compact look"
           ]
       },
       {
-          date: "Jan 12, 2026 (v1.7)",
+          version: "v1.7",
+          date: "Jan 12, 2026",
+          title: "Trip Planner Upgrades",
           changes: [
               "Trip Planner enhancements with local-only focus",
-              "New AI Magic Fill for itineraries",
+              "New AI Magic Fill for itineraries to discover hidden gems",
               "Usability fixes for map marker navigation",
               "Theme redesign for Elsa and Batman modes"
           ]
       },
       {
-          date: "Jan 2, 2026 (v1.6)",
+          version: "v1.6",
+          date: "Jan 2, 2026",
+          title: "Navigation & Discovery",
           changes: [
               "Added 'GO' navigation button for instant Google Maps routing",
-              "Trip Planner UI improvements: New layout for controls",
               "Itinerary Generator: Optimized limit to 15 top places",
               "Visual Update: Added photos for itinerary stops",
               "Smart Ranking: Star indicators for top landmarks",
-              "New 'Refresh' button to regenerate trip plans",
-              "Added details view for individual stops"
+              "Added details view for individual itinerary stops"
           ]
       },
       {
-          date: "Dec 31, 2025 (v1.5)",
+          version: "v1.5",
+          date: "Dec 31, 2025",
+          title: "Cloud Sync & Map Polish",
           changes: [
               "Automatic Google Drive Backup (Every 24h)",
               "Restored Icon-based Filter Toolbar (Todo/Done)",
-              "Silent Backup Mode",
-              "Refined Logo: Adjusted text positioning & color",
               "Map Upgrade: Cleaner, smaller pin markers",
               "Map Status: Green pins for Done, Red for Pending"
           ]
-      },
-      {
-        date: "Dec 23, 2025 (v1.4)",
-        changes: [
-            "Added timeline view in Home screen",
-            "Added slider control to view multi year data in Map section"
-        ]
-      },
-      {
-        date: "Dec 21, 2025 (v1.3)",
-        changes: [
-            "Add appropriate images while adding wish list",
-            "Add google sign-in test logins & terms, privacy policies"
-        ]
       }
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-100 relative h-[50vh] flex flex-col">
-        {/* Close Button */}
-        <button 
-            onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors z-20"
-        >
-            <X className="w-4 h-4" />
-        </button>
-
-        {/* Header - Fixed & Compact */}
-        <div className="bg-gradient-to-br from-red-600 to-red-500 p-4 text-center text-white shrink-0 relative overflow-hidden">
-             {/* Decorative Background Elements */}
-            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                <Rocket className="absolute top-2 left-4 w-8 h-8 transform -rotate-12" />
-                <Star className="absolute bottom-2 right-10 w-6 h-6 text-yellow-300 animate-pulse" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col h-[70vh] border border-gray-100 dark:border-gray-800">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-br from-red-600 to-red-500 p-6 text-white shrink-0 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                <Rocket className="w-20 h-20 rotate-12" />
             </div>
-
-            <h2 className="text-lg font-bold mb-0.5 relative z-10">Just Knock v1.8</h2>
-            <p className="text-red-100 text-[10px] font-medium opacity-90 relative z-10 uppercase tracking-widest">
-                {activeTab === 'highlights' ? "Feature Highlights" : "Version History"}
-            </p>
+            
+            <div className="flex justify-between items-start relative z-10">
+                <div>
+                    <h2 className="text-2xl font-black tracking-tight leading-none">Version History</h2>
+                    <p className="text-red-100 text-[10px] font-bold uppercase tracking-[0.2em] mt-2 opacity-80">Evolution of Just Knock</p>
+                </div>
+                <button 
+                    onClick={onClose}
+                    className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-90"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
         </div>
 
-        {/* Body - Flex Row for Vertical Tabs */}
-        <div className="flex flex-1 overflow-hidden">
-            
-            {/* Left Vertical Tabs */}
-            <div className="w-14 bg-gray-50 dark:bg-gray-900/50 border-r border-gray-100 dark:border-gray-700 flex flex-col items-center py-4 gap-4 shrink-0 z-10">
-                <button
-                    onClick={() => setActiveTab('highlights')}
-                    className={`flex flex-col items-center gap-1 group relative w-full ${activeTab === 'highlights' ? 'text-red-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                >
-                    <div className={`p-2 rounded-xl transition-all ${activeTab === 'highlights' ? 'bg-red-100 dark:bg-red-900/30 shadow-sm' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
-                        <Sparkles className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-bold">New</span>
-                    
-                    {/* Active Indicator Bar */}
-                    {activeTab === 'highlights' && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-red-500 rounded-r-full" />
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-10">
+            {history.map((log, idx) => (
+                <div key={log.version} className="relative animate-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                    {/* Connection Line */}
+                    {idx !== history.length - 1 && (
+                        <div className="absolute left-[13px] top-8 bottom-[-30px] w-0.5 bg-gray-100 dark:bg-gray-800" />
                     )}
-                </button>
 
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`flex flex-col items-center gap-1 group relative w-full ${activeTab === 'history' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                >
-                    <div className={`p-2 rounded-xl transition-all ${activeTab === 'history' ? 'bg-blue-100 dark:bg-blue-900/30 shadow-sm' : 'hover:bg-gray-200 dark:hover:bg-gray-800'}`}>
-                        <History className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-bold">Log</span>
-
-                    {/* Active Indicator Bar */}
-                    {activeTab === 'history' && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-red-500 rounded-r-full" />
-                    )}
-                </button>
-            </div>
-
-            {/* Right Content Area */}
-            <div className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-gray-800 p-0 relative">
-                
-                {activeTab === 'highlights' && (
-                    <div className="p-4 space-y-4 animate-in slide-in-from-right-4 fade-in duration-300">
-                         <div className="space-y-3">
-                            {features.map((feat, idx) => (
-                                <div key={idx} className="flex gap-3 items-start p-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <div className="mt-0.5 bg-white dark:bg-gray-700 p-1.5 rounded-lg shrink-0 shadow-sm border border-gray-100 dark:border-gray-600">
-                                        {feat.icon}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white text-xs">{feat.title}</h3>
-                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">{feat.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
+                    <div className="flex items-start gap-4">
+                        {/* Version Dot */}
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm z-10 ${idx === 0 ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700'}`}>
+                            <Hash className="w-3.5 h-3.5" />
                         </div>
-                        <div className="text-center pt-2">
-                             <p className="text-[9px] text-gray-400">Enjoy the v1.8 experience!</p>
+
+                        <div className="flex-1 pt-0.5 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide">
+                                    {log.version} <span className="mx-2 text-gray-300 dark:text-gray-700">•</span> {log.title}
+                                </h3>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                <Calendar className="w-3 h-3" />
+                                {log.date}
+                            </div>
+
+                            <ul className="space-y-2.5">
+                                {log.changes.map((change, cIdx) => (
+                                    <li key={cIdx} className="flex gap-3 text-xs text-gray-600 dark:text-gray-400 leading-relaxed group">
+                                        <ChevronRight className="w-3 h-3 mt-1 shrink-0 text-red-500/50 group-hover:text-red-500 transition-colors" />
+                                        <span>{change}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
-                )}
+                </div>
+            ))}
 
-                {activeTab === 'history' && (
-                    <div className="p-4 animate-in slide-in-from-bottom-4 fade-in duration-300">
-                        <div className="relative border-l-2 border-gray-100 dark:border-gray-700 ml-2 space-y-6">
-                            {history.map((log, idx) => (
-                                <div key={idx} className="relative pl-5">
-                                    {/* Timeline Dot */}
-                                    <div className="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-blue-100 dark:bg-blue-900 border-2 border-blue-500"></div>
-                                    
-                                    <div className="flex flex-col gap-1 mb-2">
-                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-md w-fit">
-                                            {log.date}
-                                        </span>
-                                    </div>
-                                    
-                                    <ul className="space-y-1.5">
-                                        {log.changes.map((change, cIdx) => (
-                                            <li key={cIdx} className="text-[10px] text-gray-600 dark:text-gray-300 flex items-start gap-2">
-                                                <span className="block w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mt-1 shrink-0"></span>
-                                                <span className="leading-relaxed">{change}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+            <div className="pt-10 pb-4 text-center">
+                 <p className="text-[10px] font-black text-gray-300 dark:text-gray-700 uppercase tracking-[0.5em]">Knock Your Limits</p>
             </div>
         </div>
       </div>
