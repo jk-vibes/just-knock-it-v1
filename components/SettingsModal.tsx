@@ -50,7 +50,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [backupStatus, setBackupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [lastBackup, setLastBackup] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string>('');
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +61,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setLastBackup(driveService.getLastBackupTime());
         setBackupStatus('idle');
         setRestoreStatus('idle');
-        setStatusMessage('');
         setAddingType(null);
         setInputValue('');
     }
@@ -133,29 +131,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleFileImport = (type: 'json' | 'csv') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    toast.info(`Importing ${file.name}...`);
     const reader = new FileReader();
+
     reader.onload = (event) => {
         const text = event.target?.result as string;
+        if (!text) {
+            toast.error("File is empty or could not be read.");
+            return;
+        }
+
         try {
             let importedItems: BucketItem[] = [];
-            if (type === 'json') importedItems = JSON.parse(text);
-            else importedItems = parseCsvToBucketItems(text);
+            if (type === 'json') {
+                importedItems = JSON.parse(text);
+            } else {
+                importedItems = parseCsvToBucketItems(text);
+            }
             
-            if (Array.isArray(importedItems) && onRestore) {
-                if (confirm(`Import ${importedItems.length} items? This will REPLACE your current list.`)) {
+            if (Array.isArray(importedItems) && importedItems.length > 0 && onRestore) {
+                if (confirm(`Found ${importedItems.length} dreams. Import them now? This will replace your current list.`)) {
                     onRestore(importedItems);
                     triggerHaptic('success');
-                    toast.success(`Imported ${importedItems.length} dreams!`);
+                    // Reset input so change triggers again for same file if needed
+                    e.target.value = '';
                 }
+            } else if (importedItems.length === 0) {
+                toast.warning("No valid items found. Please check your CSV format.");
+                e.target.value = '';
             } else {
                 throw new Error("Invalid format");
             }
         } catch (err) {
-            toast.error("Failed to parse file. Please check the schema.");
+            console.error("Import error detail:", err);
+            toast.error(`Failed to parse ${type.toUpperCase()}. Check the schema.`);
+            e.target.value = '';
         }
     };
+
+    reader.onerror = (err) => {
+        console.error("FileReader error:", err);
+        toast.error("Disk error reading the file.");
+        e.target.value = '';
+    };
+
     reader.readAsText(file);
-    e.target.value = '';
   };
 
   const handleDownload = (type: 'json' | 'csv') => {
@@ -164,7 +185,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `just_knock_backup.${type}`;
+    a.download = `just_knock_backup_${new Date().toISOString().split('T')[0]}.${type}`;
     a.click();
     URL.revokeObjectURL(url);
     triggerHaptic('medium');
@@ -175,6 +196,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#1a1b1e] text-white rounded-3xl w-full max-w-sm h-[620px] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-gray-800">
         
+        {/* Hidden inputs safely positioned */}
+        <div className="fixed -top-96 -left-96 opacity-0 pointer-events-none">
+            <input 
+              type="file" 
+              ref={jsonInputRef} 
+              onChange={handleFileImport('json')} 
+              accept="application/json,.json" 
+            />
+            <input 
+              type="file" 
+              ref={csvInputRef} 
+              onChange={handleFileImport('csv')} 
+              accept=".csv,text/csv,application/vnd.ms-excel" 
+            />
+        </div>
+
         <div className="flex items-center justify-between p-5 border-b border-gray-800 shrink-0">
           <h2 className="text-xl font-bold text-white">Settings</h2>
           <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white rounded-full transition-colors">
@@ -210,7 +247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 onClick={() => { handleUpdate({ theme: t as Theme }); toast.info(`Theme set to ${t}.`); }}
                                 className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${settings.theme === t ? 'border-red-500 bg-red-500/10' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:border-gray-700'}`}
                              >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t === 'marvel' ? 'bg-red-600' : t === 'batman' ? 'bg-yellow-500' : 'bg-cyan-500'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t === 'marvel' ? 'bg-red-600' : t === 'batman' ? 'bg-yellow-500' : t === 'elsa' ? 'bg-cyan-500' : ''}`}>
                                     {t === 'marvel' && <Star className="w-4 h-4 text-white" />}
                                     {t === 'batman' && <Moon className="w-4 h-4 text-black" />}
                                     {t === 'elsa' && <Sun className="w-4 h-4 text-white" />}
@@ -278,7 +315,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'preferences' && (
               <div className="space-y-8 animate-in fade-in duration-300">
-                  {/* Family Members Section */}
                   <div className="space-y-4">
                       <div className="flex justify-between items-center">
                           <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -296,7 +332,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                   </div>
 
-                  {/* Categories Section */}
                   <div className="space-y-4 pt-4 border-t border-gray-800">
                       <div className="flex justify-between items-center">
                           <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -314,7 +349,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                   </div>
 
-                  {/* Interests Section */}
                   <div className="space-y-4 pt-4 border-t border-gray-800">
                       <div className="flex justify-between items-center">
                           <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -381,11 +415,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={handleBackup} disabled={backupStatus === 'loading'} className="flex items-center justify-center gap-2 py-3 bg-[#2a2d35] rounded-xl border border-gray-800 hover:bg-[#323640] transition-all font-bold text-[11px]">
+                        <button type="button" onClick={handleBackup} disabled={backupStatus === 'loading'} className="flex items-center justify-center gap-2 py-3 bg-[#2a2d35] rounded-xl border border-gray-800 hover:bg-[#323640] transition-all font-bold text-[11px]">
                             {backupStatus === 'loading' ? <Loader2 className="w-3 h-3 animate-spin text-blue-400" /> : <Upload className="w-3 h-3 text-blue-400" />}
                             Backup
                         </button>
-                        <button onClick={handleRestore} disabled={restoreStatus === 'loading'} className="flex items-center justify-center gap-2 py-3 bg-[#2a2d35] rounded-xl border border-gray-800 hover:bg-[#323640] transition-all font-bold text-[11px]">
+                        <button type="button" onClick={handleRestore} disabled={restoreStatus === 'loading'} className="flex items-center justify-center gap-2 py-3 bg-[#2a2d35] rounded-xl border border-gray-800 hover:bg-[#323640] transition-all font-bold text-[11px]">
                             {restoreStatus === 'loading' ? <Loader2 className="w-3 h-3 animate-spin text-emerald-400" /> : <Download className="w-3 h-3 text-emerald-400" />}
                             Restore
                         </button>
@@ -396,33 +430,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Export & Import</h3>
                     <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1.5">
-                            <button onClick={() => handleDownload('json')} className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600/10 border border-purple-500/30 text-purple-400 rounded-xl hover:bg-purple-600/20 transition-all text-[10px] font-black uppercase tracking-widest">
+                            <button type="button" onClick={() => handleDownload('json')} className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600/10 border border-purple-500/30 text-purple-400 rounded-xl hover:bg-purple-600/20 transition-all text-[10px] font-black uppercase tracking-widest">
                                 <FileDown className="w-3 h-3" /> JSON
                             </button>
-                            <button onClick={() => jsonInputRef.current?.click()} className="w-full py-2 bg-gray-900 border border-gray-800 text-gray-500 rounded-lg hover:text-white transition-all text-[8px] font-bold uppercase tracking-widest">Import JSON</button>
+                            <button type="button" onClick={() => jsonInputRef.current?.click()} className="w-full py-2 bg-gray-900 border border-gray-800 text-gray-500 rounded-lg hover:text-white transition-all text-[8px] font-bold uppercase tracking-widest">Import JSON</button>
                         </div>
                         <div className="space-y-1.5">
-                            <button onClick={() => handleDownload('csv')} className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-xl hover:bg-emerald-600/20 transition-all text-[10px] font-black uppercase tracking-widest">
+                            <button type="button" onClick={() => handleDownload('csv')} className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-xl hover:bg-emerald-600/20 transition-all text-[10px] font-black uppercase tracking-widest">
                                 <FileSpreadsheet className="w-3 h-3" /> CSV
                             </button>
-                            <button onClick={() => csvInputRef.current?.click()} className="w-full py-2 bg-gray-900 border border-gray-800 text-gray-500 rounded-lg hover:text-white transition-all text-[8px] font-bold uppercase tracking-widest">Import CSV</button>
+                            <button type="button" onClick={() => csvInputRef.current?.click()} className="w-full py-2 bg-gray-900 border border-gray-800 text-gray-500 rounded-lg hover:text-white transition-all text-[8px] font-bold uppercase tracking-widest">Import CSV</button>
                         </div>
                     </div>
-                    <input type="file" ref={jsonInputRef} onChange={handleFileImport('json')} accept=".json" className="hidden" />
-                    <input type="file" ref={csvInputRef} onChange={handleFileImport('csv')} accept=".csv" className="hidden" />
                 </div>
 
                 <div className="space-y-2">
                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Local Data</h3>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={onAddMockData} className="flex items-center justify-center gap-2 py-3 bg-[#1e2a3b] border border-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-900/30 transition-all text-[10px] font-bold">
+                        <button type="button" onClick={onAddMockData} className="flex items-center justify-center gap-2 py-3 bg-[#1e2a3b] border border-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-900/30 transition-all text-[10px] font-bold">
                             <Database className="w-3 h-3" /> Add Mock Data
                         </button>
-                        <button onClick={onClearMockData} className="flex items-center justify-center gap-2 py-3 bg-orange-500/5 border border-orange-500/20 text-orange-400 rounded-xl hover:bg-orange-500/10 transition-all text-[10px] font-bold">
+                        <button type="button" onClick={onClearMockData} className="flex items-center justify-center gap-2 py-3 bg-orange-500/5 border border-orange-500/20 text-orange-400 rounded-xl hover:bg-orange-500/10 transition-all text-[10px] font-bold">
                             <Eraser className="w-3 h-3" /> Clear Mock
                         </button>
                     </div>
-                    <button onClick={() => { if(confirm("Permanently delete ALL data?")) onClearData(); }} className="w-full flex items-center justify-center gap-2 py-3 bg-[#2a1a1a] border border-red-500/20 text-red-500 rounded-xl hover:bg-red-900/20 transition-all text-[10px] font-black uppercase tracking-[0.2em]">
+                    <button type="button" onClick={() => { if(confirm("Permanently delete ALL data?")) onClearData(); }} className="w-full flex items-center justify-center gap-2 py-3 bg-[#2a1a1a] border border-red-500/20 text-red-500 rounded-xl hover:bg-red-900/20 transition-all text-[10px] font-black uppercase tracking-[0.2em]">
                         <Trash2 className="w-3 h-3" /> Reset All Data
                     </button>
                 </div>

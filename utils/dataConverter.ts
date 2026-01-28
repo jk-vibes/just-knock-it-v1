@@ -2,93 +2,151 @@
 import { BucketItem, Coordinates } from '../types';
 
 /**
- * Maps the provided CSV schema to BucketItem array
- * Schema: ID,Title,Description,Location,Latitude,Longitude,Category,Status,Completed Date,Owner,Interests
+ * Robust CSV Parser for Just Knock It
+ * Maps Schema: ID,Title,Description,Location,Latitude,Longitude,Category,Status,Completed Date,Owner,Interests
  */
 export const parseCsvToBucketItems = (csvText: string): BucketItem[] => {
-  const lines = csvText.split(/\r?\n/);
+  if (!csvText) return [];
+
+  // Remove BOM and normalize line endings
+  const cleanText = csvText.replace(/^\uFEFF/, '').trim();
+  
+  const lines: string[] = [];
+  let inQuotes = false;
+  let lastPos = 0;
+
+  // Split text into lines while respecting quoted newlines
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    if (char === '"') inQuotes = !inQuotes;
+    if (!inQuotes) {
+      if (char === '\n') {
+        lines.push(cleanText.substring(lastPos, i));
+        lastPos = i + 1;
+      } else if (char === '\r') {
+        lines.push(cleanText.substring(lastPos, i));
+        if (cleanText[i + 1] === '\n') i++; 
+        lastPos = i + 1;
+      }
+    }
+  }
+  if (lastPos < cleanText.length) {
+    lines.push(cleanText.substring(lastPos));
+  }
+
   if (lines.length < 2) return [];
 
-  // Simple CSV parser that handles basic quotes
-  const parseLine = (line: string) => {
-    const result = [];
-    let cur = '';
+  const parseCsvLine = (line: string): string[] => {
+    const fields: string[] = [];
+    let currentField = '';
     let inQuote = false;
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      if (char === '"') inQuote = !inQuote;
-      else if (char === ',' && !inQuote) {
-        result.push(cur.trim());
-        cur = '';
-      } else cur += char;
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuote && nextChar === '"') {
+          currentField += '"';
+          i++; 
+        } else {
+          inQuote = !inQuote;
+        }
+      } else if (char === ',' && !inQuote) {
+        fields.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
     }
-    result.push(cur.trim());
-    return result;
+    fields.push(currentField.trim());
+    return fields;
   };
 
-  const headers = parseLine(lines[0]);
-  const items: BucketItem[] = [];
-
+  const bucketItems: BucketItem[] = [];
+  const now = Date.now();
+  
+  // Skip header (i=0)
   for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const values = parseLine(lines[i]);
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const values = parseCsvLine(line);
     
-    // Mapping based on column index
-    // 0:ID, 1:Title, 2:Description, 3:Location, 4:Lat, 5:Long, 6:Category, 7:Status, 8:Completed Date, 9:Owner, 10:Interests
+    // Mapping 11 columns:
+    // 0:ID, 1:Title, 2:Description, 3:Location, 4:Lat, 5:Long, 6:Category, 7:Status, 8:Date, 9:Owner, 10:Interests
+    
     const id = values[0] || crypto.randomUUID();
-    const title = values[1] || 'Untitled';
+    const title = values[1] || 'Untitled Dream';
     const description = values[2] || '';
     const locationName = values[3] || '';
-    const latitude = parseFloat(values[4]);
-    const longitude = parseFloat(values[5]);
-    const category = values[6] || 'Other';
-    const status = values[7];
+    
+    const latStr = (values[4] || '').replace(/[^\d.-]/g, '');
+    const lngStr = (values[5] || '').replace(/[^\d.-]/g, '');
+    const latitude = parseFloat(latStr);
+    const longitude = parseFloat(lngStr);
+    
+    const category = values[6] || 'Travel';
+    const status = (values[7] || '').toLowerCase();
     const completedDateStr = values[8];
     const owner = values[9] || 'Me';
     const interests = values[10] ? values[10].split(';').map(s => s.trim()).filter(Boolean) : [];
 
-    const completed = status === 'Completed';
+    const isCompleted = status === 'completed';
     let completedAt: number | undefined = undefined;
-    if (completed && completedDateStr) {
+    
+    if (isCompleted && completedDateStr) {
       const d = new Date(completedDateStr);
-      if (!isNaN(d.getTime())) completedAt = d.getTime();
+      if (!isNaN(d.getTime())) {
+        completedAt = d.getTime();
+      }
     }
+
+    const hasValidCoords = !isNaN(latitude) && !isNaN(longitude) && (latitude !== 0 || longitude !== 0);
 
     const item: BucketItem = {
       id,
       title,
       description,
-      type: 'destination', // Default type for CSV imports
-      locationName,
-      coordinates: (!isNaN(latitude) && !isNaN(longitude)) ? { latitude, longitude } : undefined,
-      completed,
+      type: hasValidCoords ? 'destination' : 'goal',
+      locationName: locationName || undefined,
+      coordinates: hasValidCoords ? { latitude, longitude } : undefined,
+      completed: isCompleted,
       completedAt,
-      createdAt: Date.now(),
+      // Decrement createdAt to maintain file order when sorting by date descending
+      createdAt: now - i, 
       category,
       interests,
       owner
     };
-    items.push(item);
+    
+    bucketItems.push(item);
   }
 
-  return items;
+  return bucketItems;
 };
 
 export const exportToCsv = (items: BucketItem[]): string => {
   const headers = ['ID', 'Title', 'Description', 'Location', 'Latitude', 'Longitude', 'Category', 'Status', 'Completed Date', 'Owner', 'Interests'];
   const rows = items.map(item => {
+    const esc = (val: any) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+    };
+
     return [
-      `"${item.id}"`,
-      `"${item.title.replace(/"/g, '""')}"`,
-      `"${item.description.replace(/"/g, '""')}"`,
-      `"${(item.locationName || '').replace(/"/g, '""')}"`,
+      esc(item.id),
+      esc(item.title),
+      esc(item.description),
+      esc(item.locationName || ''),
       item.coordinates?.latitude || '',
       item.coordinates?.longitude || '',
-      `"${item.category || ''}"`,
+      esc(item.category || ''),
       item.completed ? 'Completed' : 'Pending',
       item.completedAt ? new Date(item.completedAt).toISOString().split('T')[0] : '',
-      `"${item.owner || 'Me'}"`,
-      `"${(item.interests || []).join(';')}"`
+      esc(item.owner || 'Me'),
+      esc((item.interests || []).join(';'))
     ].join(',');
   });
   return [headers.join(','), ...rows].join('\n');

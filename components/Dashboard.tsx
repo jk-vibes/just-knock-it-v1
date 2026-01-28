@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, 
@@ -58,9 +57,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   currentCity,
   onSuggestItem
 }) => {
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [suggestion, setSuggestion] = useState<BucketItemDraft | null>(null);
-
   const stats = useMemo(() => {
     const completed = items.filter(i => i.completed).sort((a, b) => {
         const dateA = typeof a.completedAt === 'number' ? a.completedAt : 0;
@@ -150,20 +146,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         uniqueCities: new Set(items.map(i => i.locationName).filter(Boolean)).size,
     };
   }, [items]);
-
-  const handleDiscover = async () => {
-    setIsDiscovering(true);
-    triggerHaptic('light');
-    try {
-        const categories = items.map(i => i.category).filter(Boolean) as string[];
-        const res = await suggestBucketItem(categories.length > 0 ? categories : ['Adventure']);
-        setSuggestion(res);
-    } catch (e) {
-        console.error(e);
-    } finally {
-        setIsDiscovering(false);
-    }
-  };
 
   const s = useMemo(() => {
     switch(theme) {
@@ -281,76 +263,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <p className="text-[9px] font-bold text-gray-500 uppercase">Itinerary Completion</p>
                     </div>
                 </div>
-            </div>
-
-            {/* AI Insight / Intelligence Pulse */}
-            {aiInsight && (
-              <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-4 rounded-xl text-white shadow-lg relative overflow-hidden group active:scale-[0.99] transition-transform">
-                  <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/5 rounded-full" />
-                  <div className="flex items-center gap-2 mb-2">
-                      <div className="p-1 rounded-lg bg-white/10">
-                        <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/70">Dream Intelligence</span>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1 leading-tight">{aiInsight.title}</h3>
-                  <p className="text-[10px] text-white/70 leading-relaxed italic line-clamp-2">"{aiInsight.message}"</p>
-              </div>
-            )}
-
-            {/* Magic Discovery Card */}
-            <div className={`p-5 ${s.card} relative overflow-hidden group`}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">Daily Discovery</h3>
-                    <Lightbulb className={`w-3.5 h-3.5 ${s.accent}`} />
-                </div>
-                
-                {suggestion ? (
-                    <div className="animate-in zoom-in-95 duration-500">
-                        <div className="flex items-start gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0 border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-                                {suggestion.images && suggestion.images[0] ? (
-                                    <img src={suggestion.images[0]} className="w-full h-full object-cover" />
-                                ) : (
-                                    <Globe className={`w-6 h-6 ${s.accent}`} />
-                                )}
-                            </div>
-                            <div className="min-w-0">
-                                <h4 className="text-[12px] font-black text-gray-900 dark:text-white truncate leading-tight">{suggestion.title}</h4>
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{suggestion.locationName}</p>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-5 line-clamp-2 leading-relaxed italic">
-                            "{suggestion.description}"
-                        </p>
-                        <div className="flex gap-2">
-                            <button 
-                                onClick={() => onSuggestItem(suggestion)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${s.btnPrimary}`}
-                            >
-                                <Plus className="w-3 h-3" /> Add to List
-                            </button>
-                            <button 
-                                onClick={() => { setSuggestion(null); handleDiscover(); }}
-                                className="px-3 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-800 transition-colors"
-                            >
-                                <RefreshCwIcon className="w-3 h-3" />
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-6 text-center">
-                        <p className="text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-widest">Find your next obsession</p>
-                        <button 
-                            onClick={handleDiscover}
-                            disabled={isDiscovering}
-                            className={`flex items-center gap-3 px-6 py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50`}
-                        >
-                            {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                            Generate Idea
-                        </button>
-                    </div>
-                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -520,8 +432,4 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
 const HistoryIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-);
-
-const RefreshCwIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 );

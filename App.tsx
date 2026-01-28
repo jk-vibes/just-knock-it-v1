@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Map as MapIcon, Settings, Bell, Radar, LayoutList, Trophy, Circle, LogOut, Users, ArrowUpDown, Filter, ChevronDown, Menu, Share2, User as UserIcon, SlidersHorizontal, AlignLeft, List, Search, X, ListChecks, BarChart3, Sparkles, MapPin } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Plus, Map as MapIcon, Settings, Bell, Radar, LayoutList, Trophy, Circle, LogOut, Users, ArrowUpDown, Filter, ChevronDown, Menu, Share2, User as UserIcon, SlidersHorizontal, AlignLeft, List, Search, X, ListChecks, BarChart3, Sparkles, MapPin, Shield, Zap, Sun as SunIcon, Target } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { BucketListCard } from './components/BucketListCard';
@@ -23,7 +23,7 @@ import { MOCK_BUCKET_ITEMS } from './utils/mockData';
 import { calculateDistance, requestNotificationPermission, sendNotification, speak } from './utils/geo';
 import { triggerHaptic } from './utils/haptics';
 import { driveService } from './services/driveService';
-import { generateStatsInsight, reverseGeocode } from './services/geminiService';
+import { generateSmartNotification, reverseGeocode } from './services/geminiService';
 import { toast } from './utils/toast';
 
 const APP_VERSION = 'v1.9';
@@ -94,7 +94,7 @@ function App() {
   const [listFilter, setListFilter] = useState<'active' | 'completed'>('active'); 
   const [selectedFamilyMember, setSelectedFamilyMember] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'date' | 'distance'>('date');
-  const [isCompact, setIsCompact] = useState(true);
+  const [isCompact, setIsCompact] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -127,10 +127,40 @@ function App() {
 
   const updateCityName = async (coords: Coordinates) => {
     try {
-        const city = await reverseGeocode(coords.latitude, coords.longitude);
+        // Fix: reverseGeocode now expects a single Coordinates object
+        const city = await reverseGeocode(coords);
         if (city) setCurrentCity(city);
     } catch (e) { console.warn("City name error", e); }
   };
+
+  const fetchSmartNotification = useCallback(async () => {
+    if (!user) return;
+    try {
+        const smartData = await generateSmartNotification(items, currentCity);
+        setLatestAiInsight({ title: smartData.title, message: smartData.message });
+        
+        const typeMap: any = { 'trivia': 'info', 'insight': 'insight', 'discovery': 'system' };
+        const notifType = typeMap[smartData.type] || 'info';
+
+        setNotifications(prev => [{ 
+            id: crypto.randomUUID(), 
+            title: smartData.title, 
+            message: smartData.message, 
+            timestamp: Date.now(), 
+            read: false, 
+            type: notifType 
+        }, ...prev]);
+
+        toast.info(smartData.message, 5000);
+
+        if (settings.notificationsEnabled) {
+            sendNotification(smartData.title, smartData.message, 'jk-smart');
+        }
+        triggerHaptic('success');
+    } catch (e) {
+        console.error("Failed to fetch intelligence pulse", e);
+    }
+  }, [user, items, currentCity, settings.notificationsEnabled]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('jk_user');
@@ -167,19 +197,19 @@ function App() {
 
   useEffect(() => { localStorage.setItem('jk_notifications', JSON.stringify(notifications)); }, [notifications]);
 
+  // Initial pulse
   useEffect(() => {
-    if (!user) return;
-    const fetchInsight = async () => {
-        const insight = await generateStatsInsight(items.filter(i => i.completed));
-        setLatestAiInsight(insight);
-        setNotifications(prev => [{ id: crypto.randomUUID(), title: insight.title, message: insight.message, timestamp: Date.now(), read: false, type: 'insight' }, ...prev]);
-        if (settings.notificationsEnabled) sendNotification(insight.title, insight.message, 'jk-insight');
-        triggerHaptic('success');
-    };
-    const t = setTimeout(fetchInsight, 5000);
-    const i = setInterval(fetchInsight, 900000);
-    return () => { clearTimeout(t); clearInterval(i); };
-  }, [user, items.length, settings.notificationsEnabled]);
+    const t = setTimeout(fetchSmartNotification, 3000); 
+    return () => clearTimeout(t);
+  }, [user === null]);
+
+  // Pulse every time Dashboard is opened
+  useEffect(() => {
+    if (activeTab === 'stats' && user) {
+        const t = setTimeout(fetchSmartNotification, 800);
+        return () => clearTimeout(t);
+    }
+  }, [activeTab, user, fetchSmartNotification]);
 
   useEffect(() => {
       if (!isRadarEnabled || !userLocation) return;
@@ -206,10 +236,10 @@ function App() {
 
   const themeStyles = useMemo(() => {
       switch (settings.theme) {
-          case 'marvel': return { headerWrapper: 'bg-white', topRowBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950', topRowText: 'text-white', topRowBorder: 'border-b-2 border-red-600', progressRowBg: 'bg-white', toolbarBg: 'bg-white', toolbarBorder: 'border-slate-200', toolbarText: 'text-slate-600', toolbarHover: 'hover:bg-slate-100', toolbarActive: 'bg-slate-100', progressActive: 'bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]', progressInactive: 'bg-gradient-to-r from-red-700 via-red-600 to-red-700 text-white', iconSecondary: 'text-white', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white shadow-sm', fabIcon: 'text-red-500', fabBorder: 'border-blue-900', accentText: 'text-red-600' };
-          case 'elsa': return { headerWrapper: 'bg-cyan-50', topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', topRowText: 'text-cyan-900', topRowBorder: 'border-b-2 border-orange-400', progressRowBg: 'bg-[#f0f9ff]', toolbarBg: 'bg-[#f0f9ff]', toolbarBorder: 'border-cyan-200', toolbarText: 'text-cyan-900', toolbarHover: 'hover:bg-cyan-100', toolbarActive: 'bg-cyan-100', progressActive: 'bg-gradient-to-r from-orange-500 via-orange-400 to-orange-300 text-white shadow-[0_0_15px_rgba(249,115,22,0.6)]', progressInactive: 'bg-gradient-to-r from-cyan-200 via-cyan-100 to-cyan-50 text-cyan-800 hover:from-cyan-200', iconSecondary: 'text-cyan-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 shadow-sm', fabIcon: 'text-orange-500', fabBorder: 'border-cyan-600', accentText: 'text-orange-500' };
+          case 'marvel': return { headerWrapper: 'bg-white', topRowBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950', topRowText: 'text-white', topRowBorder: 'border-b-2 border-red-600', progressRowBg: 'bg-white', toolbarBg: 'bg-white', toolbarBorder: 'border-slate-200', toolbarText: 'text-slate-600', toolbarHover: 'hover:bg-slate-100', toolbarActive: 'bg-slate-100', progressFillColor: '#EF4444', progressTrackColor: '#1E3A8A', iconSecondary: 'text-white', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white shadow-sm', fabIcon: 'text-red-500', fabBorder: 'border-blue-900', accentText: 'text-red-600' };
+          case 'elsa': return { headerWrapper: 'bg-cyan-50', topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', topRowText: 'text-cyan-900', topRowBorder: 'border-b-2 border-orange-400', progressRowBg: 'bg-[#f0f9ff]', toolbarBg: 'bg-[#f0f9ff]', toolbarBorder: 'border-cyan-200', toolbarText: 'text-cyan-900', toolbarHover: 'hover:bg-cyan-100', toolbarActive: 'bg-cyan-100', progressFillColor: '#F97316', progressTrackColor: '#0891B2', iconSecondary: 'text-cyan-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 shadow-sm', fabIcon: 'text-orange-500', fabBorder: 'border-cyan-600', accentText: 'text-orange-500' };
           case 'batman':
-          default: return { headerWrapper: 'bg-[#0f172a]', topRowBg: 'bg-gradient-to-r from-gray-900 via-black to-gray-900', topRowText: 'text-white', topRowBorder: 'border-b-2 border-yellow-500', progressRowBg: 'bg-[#0f172a]', toolbarBg: 'bg-[#0f172a]', toolbarBorder: 'border-gray-800', toolbarText: 'text-white', toolbarHover: 'hover:bg-white/10', toolbarActive: 'bg-white/10', progressActive: 'bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]', progressInactive: 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-gray-400', iconSecondary: 'text-yellow-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 shadow-sm', fabIcon: 'text-yellow-500', fabBorder: 'border-gray-700', accentText: 'text-yellow-500' };
+          default: return { headerWrapper: 'bg-[#0f172a]', topRowBg: 'bg-gradient-to-r from-gray-900 via-black to-gray-900', topRowText: 'text-white', topRowBorder: 'border-b-2 border-yellow-500', progressRowBg: 'bg-[#0f172a]', toolbarBg: 'bg-[#0f172a]', toolbarBorder: 'border-gray-800', toolbarText: 'text-white', toolbarHover: 'hover:bg-white/10', toolbarActive: 'bg-white/10', progressFillColor: '#EAB308', progressTrackColor: '#374151', iconSecondary: 'text-yellow-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 shadow-sm', fabIcon: 'text-yellow-500', fabBorder: 'border-gray-700', accentText: 'text-yellow-500' };
       }
   }, [settings.theme]);
 
@@ -270,6 +300,13 @@ function App() {
     toast.info("Logged out successfully.");
   };
 
+  const handleRestore = (imported: BucketItem[]) => {
+    setItems(imported);
+    setIsSettingsOpen(false); // Close modal on success for better feedback
+    triggerHaptic('success');
+    toast.success(`Successfully imported ${imported.length} dreams! ✨`);
+  };
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-500">
         <Toaster theme={settings.theme} />
@@ -294,13 +331,37 @@ function App() {
             </div>
             {!isDashboardTab && !plannerItem && (
                 <>
-                    <div className={`px-2 pt-2 pb-1 ${themeStyles.progressRowBg}`}>
+                    <div className={`px-4 pt-2 pb-1 ${themeStyles.progressRowBg}`}>
                         {searchQuery && <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">{searchQuery.trim().split(/\s+/).map((t, i) => <button key={i} onClick={() => setSearchQuery('')} className="flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800 text-white text-xs font-bold shrink-0"><span>{t}</span><X className="w-3 h-3" /></button>)}</div>}
-                        <div className="flex h-8 w-full rounded-lg overflow-hidden border border-black/5">
-                            <button onClick={() => setListFilter('completed')} className={`relative overflow-hidden transition-all duration-1000 ease-out font-black text-[10px] uppercase flex items-center justify-center ${themeStyles.progressActive}`} style={{ width: `${stats.percent}%` }}>{stats.percent > 15 ? `Knocked ${stats.done}` : `${stats.percent}%`}</button>
-                            <button onClick={() => setListFilter('active')} className={`flex-1 transition-colors font-black text-[10px] uppercase flex items-center justify-center ${themeStyles.progressInactive}`}>Dreaming {stats.pending}</button>
+                        
+                        {/* THE DUAL-COLOR VIBRANT PROGRESS SLIDER HUD */}
+                        <div 
+                            className={`relative h-9 w-full rounded-2xl overflow-hidden border shadow-inner flex items-center transition-all duration-500 ${settings.theme === 'batman' ? 'border-gray-700' : 'border-gray-200'}`}
+                            style={{
+                                background: `linear-gradient(to right, ${themeStyles.progressFillColor} 0%, ${themeStyles.progressFillColor} ${stats.percent}%, ${themeStyles.progressTrackColor} ${Math.max(0, stats.percent - 2)}%, ${themeStyles.progressTrackColor} 100%)`
+                            }}
+                        >
+                            {/* Filter Zones */}
+                            <button 
+                                onClick={() => { setListFilter('completed'); triggerHaptic('light'); }}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-start pl-4 transition-all duration-300 ${listFilter === 'completed' ? 'scale-[1.02]' : 'opacity-90'}`}
+                            >
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
+                                    Knocked {stats.done} ({stats.percent}%)
+                                </span>
+                            </button>
+
+                            <button 
+                                onClick={() => { setListFilter('active'); triggerHaptic('light'); }}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-end pr-4 transition-all duration-300 ${listFilter === 'active' ? 'scale-[1.02]' : 'opacity-90'}`}
+                            >
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
+                                    Dreaming {stats.pending}
+                                </span>
+                            </button>
                         </div>
                     </div>
+                    
                     <div className={`flex items-center justify-between px-2 py-1 ${themeStyles.toolbarBg} border-t`}>
                         <div className="flex items-center gap-1">
                             <button onClick={() => setListFilter(f => f === 'active' ? 'completed' : 'active')} className={`p-2 rounded-xl transition-colors ${listFilter === 'completed' ? 'text-green-600 bg-green-100' : `opacity-60 ${themeStyles.toolbarText}`}`}><ListChecks className="w-5 h-5" /></button>
@@ -338,7 +399,7 @@ function App() {
             </>
         )}
         <AddItemModal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }} onAdd={handleAddOrEditItem} categories={categories} availableInterests={interests} items={items} initialData={editingItem} mode={editingItem && (editingItem as any).id ? 'edit' : 'add'} editingId={(editingItem as any)?.id} theme={settings.theme} />
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} onClearData={() => { setItems([]); toast.warning("All local data cleared."); }} onClearMockData={() => { setItems(prev => prev.filter(i => !MOCK_BUCKET_ITEMS.find(m => m.id === i.id))); toast.info("Mock data removed."); }} onAddMockData={() => { setItems(prev => [...prev, ...MOCK_BUCKET_ITEMS]); toast.success("Mock data loaded."); }} categories={categories} interests={interests} familyMembers={familyMembers} onAddCategory={(c) => { setCategories(p => [...p, c]); toast.success(`Category "${c}" added.`); }} onRemoveCategory={(c) => { setCategories(p => p.filter(x => x !== c)); toast.info(`Category "${c}" removed.`); }} onAddFamilyMember={(m) => { setFamilyMembers(p => [...p, m]); toast.success(`Family member "${m}" added.`); }} onRemoveFamilyMember={(m) => { setFamilyMembers(p => p.filter(x => x !== m)); toast.info(`Family member "${m}" removed.`); }} onAddInterest={(i) => { setInterests(p => [...p, i]); toast.success(`Interest "${i}" added.`); }} onRemoveInterest={(i) => { setInterests(p => p.filter(x => x !== i)); toast.info(`Interest "${i}" removed.`); }} onLogout={handleLogout} items={items} onRestore={(imported) => { setItems(imported); toast.success("Data restored successfully!"); }} onRestartTour={() => { setIsTourActive(true); toast.info("Tour restarted."); }} />
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} onClearData={() => { setItems([]); toast.warning("All local data cleared."); }} onClearMockData={() => { setItems(prev => prev.filter(i => !MOCK_BUCKET_ITEMS.find(m => m.id === i.id))); toast.info("Mock data removed."); }} onAddMockData={() => { setItems(prev => [...prev, ...MOCK_BUCKET_ITEMS]); toast.success("Mock data loaded."); }} categories={categories} interests={interests} familyMembers={familyMembers} onAddCategory={(c) => { setCategories(p => [...p, c]); toast.success(`Category "${c}" added.`); }} onRemoveCategory={(c) => { setCategories(p => p.filter(x => x !== c)); toast.info(`Category "${c}" removed.`); }} onAddFamilyMember={(m) => { setFamilyMembers(p => [...p, m]); toast.success(`Family member "${m}" added.`); }} onRemoveFamilyMember={(m) => { setFamilyMembers(p => p.filter(x => x !== m)); toast.info(`Family member "${m}" removed.`); }} onAddInterest={(i) => { setInterests(p => [...p, i]); toast.success(`Interest "${i}" added.`); }} onRemoveInterest={(i) => { setInterests(p => p.filter(x => x !== i)); toast.info(`Interest "${i}" removed.`); }} onLogout={handleLogout} items={items} onRestore={handleRestore} onRestartTour={() => { setIsTourActive(true); toast.info("Tour restarted."); }} />
         <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} onMarkAllRead={() => { setNotifications(prev => prev.map(n => ({...n, read: true}))); toast.info("All caught up!"); }} onClearAll={() => { setNotifications([]); toast.info("Notifications cleared."); }} />
         <CompleteDateModal isOpen={!!completingItemId} onClose={() => setCompletingItemId(null)} onConfirm={(date) => { setItems(prev => prev.map(i => i.id === completingItemId ? {...i, completed: true, completedAt: date} : i)); setCompletingItemId(null); triggerHaptic('success'); toast.success("Dream Knocked Out! 🎉"); }} itemTitle={items.find(i => i.id === completingItemId)?.title} />
         {galleryItem && <ImageGalleryModal item={galleryItem} onClose={() => setGalleryItem(null)} />}

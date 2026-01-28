@@ -51,8 +51,9 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
            3. Focus ONLY on local attractions, hidden gems, and landmarks INSIDE the city area of "${input}". 
            4. Every stop must be reachable within a short local drive or walk from the city center.`;
 
+    // Using gemini-3-pro-preview for complex reasoning and planning tasks
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -91,6 +92,57 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
   }
 };
 
+export const generateSmartNotification = async (items: BucketItem[], currentCity?: string): Promise<{ title: string; message: string; type: string; suggestion?: BucketItemDraft }> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    try {
+        const listSummary = items.map(i => ({ title: i.title, location: i.locationName, completed: i.completed }));
+        const taggedLocations = items.filter(i => !i.completed && i.locationName).map(i => i.locationName);
+        
+        const prompt = `Based on the user's bucket list: ${JSON.stringify(listSummary)}. 
+        Current City context: ${currentCity || 'Unknown'}.
+        Tagged Locations they want to visit: ${JSON.stringify(taggedLocations)}.
+
+        GENERATE ONE SMART NOTIFICATION that is either:
+        1. "Location Trivia/News": A "Did you know" or recent interesting news about one of their tagged locations.
+        2. "Personal Insight": A witty observation about their progress or a motivational nudge.
+        3. "Daily Discovery": A suggestion for a NEW bucket list item based on their interests.
+        
+        If it's a discovery, include a simplified bucket item structure.
+        Return JSON with "title", "message", "type" (one of: trivia, insight, discovery), and optional "suggestion" (BucketItemDraft schema).`;
+
+        // Using gemini-3-pro-preview for complex reasoning task
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        message: { type: Type.STRING },
+                        type: { type: Type.STRING },
+                        suggestion: {
+                            type: Type.OBJECT,
+                            properties: {
+                                title: { type: Type.STRING },
+                                description: { type: Type.STRING },
+                                locationName: { type: Type.STRING },
+                                category: { type: Type.STRING }
+                            }
+                        }
+                    },
+                    required: ["title", "message", "type"]
+                }
+            }
+        });
+        const data = JSON.parse(response.text || '{}');
+        return data;
+    } catch (e) {
+        return { title: "Dream On!", message: "Your bucket list is waiting for its next champion.", type: "insight" };
+    }
+};
+
 export const generateStatsInsight = async (completedItems: BucketItem[]): Promise<{ title: string; message: string }> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
@@ -98,6 +150,7 @@ export const generateStatsInsight = async (completedItems: BucketItem[]): Promis
             return { title: "New Journey Starts!", message: "Ready to knock your first dream? Start by adding a destination!" };
         }
         const history = completedItems.map(i => ({ title: i.title, cat: i.category, loc: i.locationName }));
+        // Using gemini-3-flash-preview for simple text synthesis task
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Based on this bucket list history: ${JSON.stringify(history)}. Generate one short, witty, and inspiring "Fun Fact" or "Milestone Achievement". 
@@ -131,8 +184,9 @@ export const chatWithGemini = async (query: string, locationContext?: string, bu
         IMPORTANT: If the user asks for nearby restaurants, food, or attractions without specifying a city, assume they are in ${locationContext}. Use your search tools to find current, real-world data for that specific city.
         Be inspiring, helpful, and concise. Use markdown for better readability.`;
 
+        // Using gemini-3-pro-preview for high-quality conversational tasks with tool use
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3-pro-preview',
             contents: query,
             config: {
                 systemInstruction,
@@ -154,8 +208,9 @@ export const chatWithGemini = async (query: string, locationContext?: string, bu
 export const suggestBucketItem = async (availableCategories: string[], context?: string): Promise<BucketItemDraft> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
+        // Using gemini-3-pro-preview for a creative reasoning task
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3-pro-preview',
             contents: `Suggest a random, world-famous bucket list adventure or destination. ${context ? `Take inspiration from: ${context}` : ''}
             Ensure it is iconic, specific, and has a clear location.`,
             config: { 
@@ -195,8 +250,11 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
     }
 };
 
-export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+// Fix: Change signature to accept a single Coordinates object to resolve argument count mismatch in App.tsx
+export const reverseGeocode = async (coords: Coordinates): Promise<string> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const { latitude: lat, longitude: lng } = coords;
+    // Using gemini-3-flash-preview for a simple text extraction task
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Return ONLY the name of the major city for these coordinates: ${lat}, ${lng}. No punctuation, no state, no country, just the name in UPPERCASE. Example: TOKYO`,
@@ -207,8 +265,9 @@ export const reverseGeocode = async (lat: number, lng: number): Promise<string> 
 export const getPlaceDetails = async (placeName: string, context?: string): Promise<ItineraryItem | null> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
+    // Using gemini-3-pro-preview for detailed extraction task
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `Provide full details for: "${placeName}". ${context ? `Context: ${context}` : ''}`,
       config: { responseMimeType: "application/json", responseSchema: itineraryItemSchema }
     });
@@ -231,8 +290,9 @@ export const getPlaceDetails = async (placeName: string, context?: string): Prom
 export const generateItineraryForLocation = async (location: string): Promise<ItineraryItem[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
+    // Using gemini-3-pro-preview for complex planning task
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `Suggest 15 top spots, hidden gems, and landmarks STRICTLY within the city area of "${location}".`,
       config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
@@ -254,8 +314,9 @@ export const generateItineraryForLocation = async (location: string): Promise<It
 export const generateRoadTripStops = async (start: string, end: string): Promise<ItineraryItem[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
+    // Using gemini-3-pro-preview for complex planning task
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `Suggest 5-8 scenic stops for a short road trip between "${start}" and "${end}".`,
       config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
@@ -278,8 +339,9 @@ export const optimizeRouteOrder = async (items: ItineraryItem[]): Promise<Itiner
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     if (items.length <= 2) return items;
     try {
+        // Using gemini-3-pro-preview for optimization reasoning task
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3-pro-preview',
             contents: `Reorder these locations to create an efficient route starting from the first item: ${JSON.stringify(items.map(i => i.name))}`,
             config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
         });
