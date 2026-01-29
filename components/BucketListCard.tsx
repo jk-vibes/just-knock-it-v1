@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Calendar, Route, Image as ImageIcon, Check, Snowflake, Flag } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, TravelMode } from '../types';
@@ -134,7 +133,7 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   return (
     <div 
       id={`card-${item.id}`}
-      className={`${s.card} border rounded-2xl p-3.5 shadow-sm relative group transition-all duration-300 hover:shadow-xl overflow-hidden mb-3 active:scale-[0.98] ${isHighlighted ? 'ring-4 ring-offset-2 ring-red-500 scale-[1.02] z-20' : 'hover:-translate-y-1'}`}
+      className={`${s.card} border rounded-2xl p-3 shadow-sm relative group transition-all duration-300 hover:shadow-xl overflow-hidden relative active:scale-[0.98] ${isHighlighted ? 'ring-4 ring-offset-2 ring-red-500 scale-[1.02] z-20' : 'hover:-translate-y-1'}`}
       onClick={() => onEdit(item)}
     >
       <ThemeBackgroundIcon theme={theme} />
@@ -178,12 +177,12 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                 </div>
 
                 {!isCompact && (
-                    <div className="mb-3 animate-in slide-in-from-top-2 fade-in duration-500">
+                    <div className="mb-2 animate-in slide-in-from-top-2 fade-in duration-500">
                         <p className={`text-xs leading-relaxed line-clamp-3 mb-2 transition-colors duration-500 ${s.subText}`}>
                             {item.description}
                         </p>
                         
-                        <div className="flex flex-wrap gap-1.5 mb-2">
+                        <div className="flex flex-wrap gap-1.5 mb-1">
                             {item.category && (
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); onSearch(item.category || ''); }}

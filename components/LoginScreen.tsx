@@ -5,18 +5,11 @@ import { driveService } from '../services/driveService';
 import { Settings, LogIn, Copy, Shield, Scale, AlertCircle, Info, ExternalLink, ChevronRight, HelpCircle } from 'lucide-react';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
+import { LiquidBucket } from './LiquidBucket';
 
 interface LoginScreenProps {
   onLogin: (user: User) => void;
 }
-
-const BucketLogo = () => (
-    <svg width="64" height="64" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-4">
-      <path d="M56 160c0-100 400-100 400 0" stroke="#ef4444" strokeWidth="30" strokeLinecap="round" fill="none"></path>
-      <path d="M56 160l40 320h320l40-320Z" fill="#ef4444"></path>
-      <text x="256" y="380" fontFamily="Arial Black, Arial, sans-serif" fontWeight="900" fontSize="160" fill="#ffffff" textAnchor="middle">JK</text>
-    </svg>
-  );
 
 declare global {
     interface Window {
@@ -113,6 +106,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   const copyOrigin = () => {
+      // Fix: Use writeText instead of non-existent text method on Clipboard API
       navigator.clipboard.writeText(currentOrigin);
       alert("Origin copied! Add this to your Google Cloud Console.");
   };
@@ -120,7 +114,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 flex flex-col items-center justify-center p-4 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-500 border border-gray-100 dark:border-gray-800 overflow-y-auto no-scrollbar max-h-[95vh]">
-        <BucketLogo />
+        <div className="w-20 h-20 mb-6 drop-shadow-2xl">
+            <LiquidBucket theme="brand-red" percent={85} />
+        </div>
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">just knock it</h1>
         <p className="text-gray-400 dark:text-gray-500 mb-8 font-medium">dream it. bucket it. knock it.</p>
 
@@ -170,6 +166,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             <Info className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
                         </div>
                         <div>
+                            {/* Fix: Added missing opening bracket '<' to the h3 tag */}
                             <h3 className="text-xs font-black text-red-800 dark:text-red-400 uppercase tracking-widest mb-1">Authorization Guide</h3>
                             <p className="text-[10px] text-red-700/80 dark:text-red-300/60 leading-relaxed font-medium">
                                 Google blocks access because this website's URL hasn't been added to your Google Project's "Authorized Origins."

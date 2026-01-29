@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Map as MapIcon, Settings, Bell, Radar, LayoutList, Trophy, Circle, LogOut, Users, ArrowUpDown, Filter, ChevronDown, Menu, Share2, User as UserIcon, SlidersHorizontal, AlignLeft, List, Search, X, ListChecks, BarChart3, Sparkles, MapPin, Shield, Zap, Sun as SunIcon, Target } from 'lucide-react';
+import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { BucketListCard } from './components/BucketListCard';
 import { AddItemModal } from './components/AddItemModal';
 import { SettingsModal } from './components/SettingsModal';
-import { CompactSettings } from './components/CompactSettings';
 import { MapView } from './components/MapView';
 import { TimelineView } from './components/TimelineView';
 import { NotificationsModal } from './components/NotificationsModal';
@@ -18,59 +17,14 @@ import { Dashboard } from './components/Dashboard';
 import { ProfileMenu } from './components/ProfileMenu';
 import { ChatbotModal } from './components/ChatbotModal';
 import { Toaster } from './components/Toaster';
+import { LiquidBucket } from './components/LiquidBucket';
 import { MOCK_BUCKET_ITEMS } from './utils/mockData';
 import { calculateDistance, requestNotificationPermission, sendNotification, speak } from './utils/geo';
 import { triggerHaptic } from './utils/haptics';
-import { driveService } from './services/driveService';
 import { generateSmartNotification, reverseGeocode } from './services/geminiService';
 import { toast } from './utils/toast';
 
 const APP_VERSION = 'v1.9';
-
-const LiquidBucket = ({ theme, isFab = false, percent = 50, label = "JK" }: { theme: Theme | 'brand-red', isFab?: boolean, percent?: number, label?: string }) => {
-    const themes = {
-        marvel: { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#1e3a8a", text: "#1e3a8a" },
-        batman: { liquid: "#EAB308", bg: "#111827", stroke: "#374151", text: "#FFFFFF" },
-        elsa: { liquid: "#F97316", bg: isFab ? "#F0F9FF" : "transparent", stroke: "#0891B2", text: "#0E7490" },
-        'brand-red': { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#EF4444", text: "#EF4444" }
-    };
-    const activeKey = (themes[theme as keyof typeof themes] ? theme : 'marvel') as keyof typeof themes;
-    const style = themes[activeKey];
-    const fillP = Math.min(100, Math.max(0, percent));
-    const liquidHeight = (fillP / 100) * 320; 
-    const liquidTopY = 480 - liquidHeight;
-    const uniqueId = `mask-${isFab ? 'fab' : 'head'}-${activeKey}-${Math.random().toString(36).substr(2, 5)}`;
-    const textFill = "#FFFFFF";
-
-    return (
-        <svg viewBox="0 0 512 512" className={`w-full h-full transition-all duration-700 ease-in-out ${isFab ? 'drop-shadow-lg' : ''}`} xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <clipPath id={uniqueId}><path d="M56 160 L96 480 L416 480 L456 160 Z" /></clipPath>
-            </defs>
-            <path d="M56 160c0-100 400-100 400 0" fill="none" stroke={style.stroke} strokeWidth="30" strokeLinecap="round" />
-            <path d="M56 160 L96 480 L416 480 L456 160 Z" fill={isFab ? style.bg : 'none'} opacity={isFab ? 0.95 : 0} />
-            <g clipPath={`url(#${uniqueId})`}>
-                 <path d={`M 0 ${liquidTopY} Q 128 ${liquidTopY - 20} 256 ${liquidTopY} T 512 ${liquidTopY} T 768 ${liquidTopY} T 1024 ${liquidTopY} V 500 H 0 Z`} fill={style.liquid} className="animate-wave transition-all duration-700 ease-out" />
-            </g>
-            <path d="M56 160 L96 480 L416 480 L456 160 Z" fill="none" stroke={style.stroke} strokeWidth="30" strokeLinejoin="round" />
-            {(label !== "JK" || !isFab) && (
-                <text 
-                    x="256" 
-                    y="460" 
-                    fontFamily="Arial Black, Arial, sans-serif" 
-                    fontWeight="900" 
-                    fontSize={label === "?" ? "240" : "100"} 
-                    fill={textFill} 
-                    textAnchor="middle"
-                    className="transition-colors duration-500 select-none"
-                    style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.4))' }}
-                >
-                    {label}
-                </text>
-            )}
-        </svg>
-    );
-};
 
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
 const DEFAULT_INTERESTS = ['History', 'Art', 'Architecture', 'Hiking', 'Music', 'Photography', 'Shopping', 'Relaxation'];
@@ -83,7 +37,7 @@ const getAvatarColor = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-function App() {
+export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [items, setItems] = useState<BucketItem[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
@@ -91,10 +45,15 @@ function App() {
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('list');
   const [listFilter, setListFilter] = useState<'active' | 'completed'>('active'); 
+  
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [activeInterests, setActiveInterests] = useState<string[]>([]);
+  const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
+  const [searchInputValue, setSearchInputValue] = useState('');
+
   const [selectedFamilyMember, setSelectedFamilyMember] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'date' | 'distance'>('date');
   const [isCompact, setIsCompact] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -122,7 +81,6 @@ function App() {
   const [editingItem, setEditingItem] = useState<BucketItem | null>(null);
   const [completingItemId, setCompletingItemId] = useState<string | null>(null);
   const [latestAiInsight, setLatestAiInsight] = useState<{ title: string; message: string } | null>(null);
-  const notifiedItemsRef = useRef<Set<string>>(new Set());
 
   const updateCityName = async (coords: Coordinates) => {
     try {
@@ -149,8 +107,7 @@ function App() {
             type: notifType 
         }, ...prev]);
 
-        // Persistent toast (0 duration) with "JK Smart Notifier" title
-        toast.info(smartData.message, 0, "JK Smart Notifier");
+        toast.info(smartData.message, 0, "Smart Notifier");
 
         if (settings.notificationsEnabled) {
             sendNotification(smartData.title, smartData.message, 'jk-smart');
@@ -179,9 +136,7 @@ function App() {
   useEffect(() => {
     if (!userLocation) return;
     updateCityName(userLocation);
-    const interval = setInterval(() => userLocation && updateCityName(userLocation), 14400000);
-    return () => clearInterval(interval);
-  }, [userLocation === null]);
+  }, [userLocation]);
 
   useEffect(() => {
       localStorage.setItem('jk_items', JSON.stringify(items));
@@ -196,13 +151,11 @@ function App() {
 
   useEffect(() => { localStorage.setItem('jk_notifications', JSON.stringify(notifications)); }, [notifications]);
 
-  // Initial pulse
   useEffect(() => {
     const t = setTimeout(fetchSmartNotification, 3000); 
     return () => clearTimeout(t);
   }, [user === null]);
 
-  // Pulse every time Dashboard is opened
   useEffect(() => {
     if (activeTab === 'stats' && user) {
         const t = setTimeout(fetchSmartNotification, 800);
@@ -235,22 +188,32 @@ function App() {
 
   const themeStyles = useMemo(() => {
       switch (settings.theme) {
-          case 'marvel': return { headerWrapper: 'bg-white', topRowBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950', topRowText: 'text-white', topRowBorder: 'border-b-2 border-red-600', progressRowBg: 'bg-white', toolbarBg: 'bg-white', toolbarBorder: 'border-slate-200', toolbarText: 'text-slate-600', toolbarHover: 'hover:bg-slate-100', toolbarActive: 'bg-slate-100', progressFillColor: '#EF4444', progressTrackColor: '#1E3A8A', iconSecondary: 'text-white', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white shadow-sm', fabIcon: 'text-red-500', fabBorder: 'border-blue-900', accentText: 'text-red-600' };
-          case 'elsa': return { headerWrapper: 'bg-cyan-50', topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', topRowText: 'text-cyan-900', topRowBorder: 'border-b-2 border-orange-400', progressRowBg: 'bg-[#f0f9ff]', toolbarBg: 'bg-[#f0f9ff]', toolbarBorder: 'border-cyan-200', toolbarText: 'text-cyan-900', toolbarHover: 'hover:bg-cyan-100', toolbarActive: 'bg-cyan-100', progressFillColor: '#F97316', progressTrackColor: '#0891B2', iconSecondary: 'text-cyan-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 shadow-sm', fabIcon: 'text-orange-500', fabBorder: 'border-cyan-600', accentText: 'text-orange-500' };
+          case 'marvel': return { headerWrapper: 'bg-white', topRowBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950', topRowText: 'text-white', topRowBorder: 'border-b-2 border-red-600', progressRowBg: 'bg-white', toolbarBg: 'bg-white', toolbarBorder: 'border-slate-200', toolbarText: 'text-slate-600', toolbarHover: 'hover:bg-slate-100', toolbarActive: 'bg-slate-100', progressFillColor: '#EF4444', progressTrackColor: '#1E3A8A', iconSecondary: 'text-white', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white shadow-sm', fabIcon: 'text-red-500', fabBorder: 'border-blue-900', accentText: 'text-red-600', activeBg: 'bg-red-600', activeText: 'text-white', chipBg: 'bg-red-600', chipText: 'text-white', chipInactive: 'bg-slate-100 text-slate-500', chipInterest: 'bg-indigo-600 text-white' };
+          case 'elsa': return { headerWrapper: 'bg-cyan-50', topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', topRowText: 'text-cyan-900', topRowBorder: 'border-b-2 border-orange-400', progressRowBg: 'bg-[#f0f9ff]', toolbarBg: 'bg-[#f0f9ff]', toolbarBorder: 'border-cyan-200', toolbarText: 'text-cyan-900', toolbarHover: 'hover:bg-cyan-100', toolbarActive: 'bg-cyan-100', progressFillColor: '#F97316', progressTrackColor: '#0891B2', iconSecondary: 'text-cyan-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 shadow-sm', fabIcon: 'text-orange-500', fabBorder: 'border-cyan-600', accentText: 'text-orange-500', activeBg: 'bg-orange-500', activeText: 'text-white', chipBg: 'bg-orange-500', chipText: 'text-white', chipInactive: 'bg-cyan-100/50 text-cyan-600', chipInterest: 'bg-sky-600 text-white' };
           case 'batman':
-          default: return { headerWrapper: 'bg-[#0f172a]', topRowBg: 'bg-gradient-to-r from-gray-900 via-black to-gray-900', topRowText: 'text-white', topRowBorder: 'border-b-2 border-yellow-500', progressRowBg: 'bg-[#0f172a]', toolbarBg: 'bg-[#0f172a]', toolbarBorder: 'border-gray-800', toolbarText: 'text-white', toolbarHover: 'hover:bg-white/10', toolbarActive: 'bg-white/10', progressFillColor: '#EAB308', progressTrackColor: '#374151', iconSecondary: 'text-yellow-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 shadow-sm', fabIcon: 'text-yellow-500', fabBorder: 'border-gray-700', accentText: 'text-yellow-500' };
+          default: return { headerWrapper: 'bg-[#0f172a]', topRowBg: 'bg-gradient-to-r from-gray-900 via-black to-gray-900', topRowText: 'text-white', topRowBorder: 'border-b-2 border-gray-800', progressRowBg: 'bg-[#0f172a]', toolbarBg: 'bg-[#0f172a]', toolbarBorder: 'border-gray-800', toolbarText: 'text-white', toolbarHover: 'hover:bg-white/10', toolbarActive: 'bg-white/10', progressFillColor: '#EAB308', progressTrackColor: '#374151', iconSecondary: 'text-yellow-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 shadow-sm', fabIcon: 'text-yellow-500', fabBorder: 'border-gray-700', accentText: 'text-yellow-500', activeBg: 'bg-yellow-500', activeText: 'text-black', chipBg: 'bg-yellow-500', chipText: 'text-black', chipInactive: 'bg-gray-800 text-gray-500', chipInterest: 'bg-gray-600 text-white' };
       }
   }, [settings.theme]);
 
   const searchResults = useMemo(() => items.filter(item => {
       const familyMatch = selectedFamilyMember === 'All' ? true : selectedFamilyMember === 'Me' ? (item.owner === 'Me' || !item.owner) : item.owner === selectedFamilyMember;
+      const categoryMatch = activeCategories.length === 0 ? true : activeCategories.includes(item.category || '');
+      const interestMatch = activeInterests.length === 0 ? true : activeInterests.every(ai => item.interests?.includes(ai));
+      
       let searchMatch = true;
-      if (searchQuery.trim()) {
-          const terms = searchQuery.toLowerCase().split(/\s+/).filter(t => t.trim());
-          searchMatch = terms.every(q => (item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q) || (item.locationName?.toLowerCase().includes(q)) || (item.category?.toLowerCase().includes(q))));
+      if (searchKeywords.length > 0) {
+          searchMatch = searchKeywords.every(q => {
+              const lowerQ = q.toLowerCase();
+              return (
+                item.title.toLowerCase().includes(lowerQ) || 
+                item.description.toLowerCase().includes(lowerQ) || 
+                (item.locationName?.toLowerCase().includes(lowerQ)) || 
+                (item.category?.toLowerCase().includes(lowerQ))
+              );
+          });
       }
-      return familyMatch && searchMatch;
-  }), [items, selectedFamilyMember, searchQuery]);
+      return familyMatch && categoryMatch && interestMatch && searchMatch;
+  }), [items, selectedFamilyMember, activeCategories, activeInterests, searchKeywords]);
 
   const stats = useMemo(() => ({ done: searchResults.filter(i => i.completed).length, pending: searchResults.length - searchResults.filter(i => i.completed).length, percent: searchResults.length > 0 ? Math.round((searchResults.filter(i => i.completed).length / searchResults.length) * 100) : 0, total: searchResults.length }), [searchResults]);
 
@@ -258,9 +221,6 @@ function App() {
       if (sortBy === 'distance' && userLocation && a.coordinates && b.coordinates) return calculateDistance(userLocation, a.coordinates) - calculateDistance(userLocation, b.coordinates);
       return (listFilter === 'completed' ? (b.completedAt || 0) - (a.completedAt || 0) : b.createdAt - a.createdAt);
   }), [searchResults, listFilter, sortBy, userLocation]);
-
-  if (!user) return <LoginScreen onLogin={(u) => setUser(u)} />;
-  const isDashboardTab = activeTab === 'stats';
 
   const handleSuggestItem = (suggestion: BucketItemDraft) => {
       setEditingItem(suggestion as any);
@@ -301,91 +261,242 @@ function App() {
 
   const handleRestore = (imported: BucketItem[]) => {
     setItems(imported);
-    setIsSettingsOpen(false); // Close modal on success for better feedback
+    setIsSettingsOpen(false); 
     triggerHaptic('success');
     toast.success(`Successfully imported ${imported.length} dreams! ✨`);
   };
 
+  const handleSortToggle = () => {
+      if (sortBy === 'distance') {
+          if (!userLocation) {
+              toast.warning("Location access needed for distance sort.");
+              return;
+          }
+          setSortBy('distance');
+          toast.info("Sorting by proximity.");
+      } else {
+          setSortBy('date');
+          toast.info("Sorting by newest.");
+      }
+      triggerHaptic('light');
+  };
+
+  const handleKeywordAdd = (word: string) => {
+      const trimmed = word.trim();
+      if (!trimmed) return;
+      if (!searchKeywords.includes(trimmed)) {
+          setSearchKeywords(prev => [...prev, trimmed]);
+      }
+      setSearchInputValue('');
+      triggerHaptic('medium');
+  };
+
+  const isAnyFilterActive = searchKeywords.length > 0 || activeCategories.length > 0 || activeInterests.length > 0;
+  const isDashboardTab = activeTab === 'stats';
+
+  if (!user) return <LoginScreen onLogin={(u) => setUser(u)} />;
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-500">
         <Toaster theme={settings.theme} />
-        <header className={`sticky top-0 z-[60] shadow-xl ${themeStyles.headerWrapper}`}>
-            <div className={`flex items-center justify-between px-2 pt-3 pb-2 ${themeStyles.topRowBg} ${themeStyles.topRowText} ${themeStyles.topRowBorder}`}>
-                <div className="flex flex-col items-start relative">
-                     <div className="flex items-start" onClick={() => setIsChangelogOpen(true)}>
-                         <div className="w-12 h-12"><LiquidBucket theme="brand-red" percent={50} /></div>
-                         <button className={`px-1.5 py-0.5 rounded-md ${settings.theme === 'marvel' ? 'bg-red-600' : settings.theme === 'elsa' ? 'bg-orange-400' : 'bg-yellow-500 text-black'} border text-[9px] font-bold mt-0 -ml-1.5 z-10`}>{APP_VERSION}</button>
+        <header className={`sticky top-0 z-[60] ${themeStyles.headerWrapper}`}>
+            <div className={`flex items-center justify-between px-2 pt-1 pb-2 ${themeStyles.topRowBg} ${themeStyles.topRowText} ${themeStyles.topRowBorder}`}>
+                <div className="flex items-center gap-2 cursor-pointer active:opacity-70 transition-opacity" onClick={() => setIsChangelogOpen(true)}>
+                    <div className="w-14 h-14 shrink-0"><LiquidBucket theme="brand-red" percent={75} /></div>
+                    <div className="flex flex-col pt-1">
+                        <span className={`text-[13px] font-black tracking-widest lowercase leading-tight ${themeStyles.iconSecondary}`}>just knock it</span>
+                        <div className="mt-0.5">
+                            <span className={`px-1.5 py-px rounded-sm text-[8px] font-bold tracking-wider ${
+                                settings.theme === 'marvel' ? 'bg-white/20 text-white' : 
+                                settings.theme === 'elsa' ? 'bg-orange-100 text-orange-600' : 
+                                'bg-white/10 text-yellow-400'
+                            } backdrop-blur-sm inline-block`}>{APP_VERSION}</span>
+                        </div>
                     </div>
-                     <span className={`text-[10px] font-black tracking-widest lowercase ml-2 ${themeStyles.iconSecondary}`}>just knock it</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <button onClick={() => { setActiveTab(isDashboardTab ? 'list' : 'stats'); triggerHaptic('light'); }} className={themeStyles.headerBtn}>{isDashboardTab ? <List className="w-5 h-5" /> : <BarChart3 className="w-5 h-5" />}</button>
                     <button onClick={() => setIsSettingsOpen(true)} className={themeStyles.headerBtn}><Settings className="w-5 h-5" /></button>
                     <button onClick={() => setIsNotificationsOpen(true)} className={`${themeStyles.headerBtn} relative`}><Bell className="w-5 h-5" />{notifications.filter(n => !n.read).length > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white px-1">{notifications.filter(n => !n.read).length}</span>}</button>
                     <div className="relative">
-                        <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className={themeStyles.headerProfileBtn}><img src={user.photoUrl || "https://ui-avatars.com/api/?name=User"} className="w-full h-full object-cover" /></button>
+                        <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className={themeStyles.headerProfileBtn}><img src={user.photoUrl || "https://ui-avatars.com/api/?name=User"} className="w-full h-full object-cover" alt="Profile" /></button>
                         {isProfileMenuOpen && <ProfileMenu user={user} theme={settings.theme} onLogout={handleLogout} onClose={() => setIsProfileMenuOpen(false)} onOpenSettings={() => setIsSettingsOpen(true)} />}
                     </div>
                 </div>
             </div>
             {!isDashboardTab && !plannerItem && (
                 <>
-                    <div className={`px-4 pt-2 pb-1 ${themeStyles.progressRowBg}`}>
-                        {searchQuery && <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">{searchQuery.trim().split(/\s+/).map((t, i) => <button key={i} onClick={() => setSearchQuery('')} className="flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800 text-white text-xs font-bold shrink-0"><span>{t}</span><X className="w-3 h-3" /></button>)}</div>}
-                        
-                        {/* THE DUAL-COLOR VIBRANT PROGRESS SLIDER HUD */}
+                    <div className={`px-2 pt-2 pb-1.5 ${themeStyles.progressRowBg}`}>
                         <div 
                             className={`relative h-9 w-full rounded-2xl overflow-hidden border shadow-inner flex items-center transition-all duration-500 ${settings.theme === 'batman' ? 'border-gray-700' : 'border-gray-200'}`}
                             style={{
                                 background: `linear-gradient(to right, ${themeStyles.progressFillColor} 0%, ${themeStyles.progressFillColor} ${stats.percent}%, ${themeStyles.progressTrackColor} ${Math.max(0, stats.percent - 2)}%, ${themeStyles.progressTrackColor} 100%)`
                             }}
                         >
-                            {/* Filter Zones */}
                             <button 
                                 onClick={() => { setListFilter('completed'); triggerHaptic('light'); }}
-                                className={`relative z-10 flex-1 h-full flex items-center justify-start pl-4 transition-all duration-300 ${listFilter === 'completed' ? 'scale-[1.02]' : 'opacity-90'}`}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-start pl-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'completed' ? 'scale-[1.02]' : 'opacity-90'}`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${listFilter === 'completed' ? 'underline decoration-2 underline-offset-4' : ''}`}>
                                     Knocked {stats.done} ({stats.percent}%)
                                 </span>
                             </button>
 
                             <button 
                                 onClick={() => { setListFilter('active'); triggerHaptic('light'); }}
-                                className={`relative z-10 flex-1 h-full flex items-center justify-end pr-4 transition-all duration-300 ${listFilter === 'active' ? 'scale-[1.02]' : 'opacity-90'}`}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-end pr-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'active' ? 'scale-[1.02]' : 'opacity-90'}`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`}>
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${listFilter === 'active' ? 'underline decoration-2 underline-offset-4' : ''}`}>
                                     Dreaming {stats.pending}
                                 </span>
                             </button>
                         </div>
+
+                        {isAnyFilterActive && (
+                            <div className="mt-1.5 flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-1 animate-in fade-in slide-in-from-top-1 duration-300">
+                                {activeCategories.map(cat => (
+                                    <button 
+                                        key={cat}
+                                        onClick={() => { setActiveCategories(prev => prev.filter(c => c !== cat)); triggerHaptic('light'); }}
+                                        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${themeStyles.chipBg} ${themeStyles.chipText} text-[9px] font-black uppercase tracking-tight shrink-0 shadow-md transition-all active:scale-90`}
+                                    >
+                                        <span>Cat: {cat}</span>
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                ))}
+                                {activeInterests.map(interest => (
+                                    <button 
+                                        key={interest}
+                                        onClick={() => { setActiveInterests(prev => prev.filter(i => i !== interest)); triggerHaptic('light'); }}
+                                        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${themeStyles.chipInterest} text-[9px] font-black uppercase tracking-tight shrink-0 shadow-md transition-all active:scale-90`}
+                                    >
+                                        <span>#{interest}</span>
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                ))}
+                                {searchKeywords.map((word, i) => (
+                                    <button 
+                                        key={`search-${i}`} 
+                                        onClick={() => {
+                                            setSearchKeywords(prev => prev.filter(w => w !== word));
+                                            triggerHaptic('light');
+                                        }} 
+                                        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${themeStyles.chipBg} ${themeStyles.chipText} text-[9px] font-black uppercase tracking-tight shrink-0 shadow-md transition-all active:scale-90`}
+                                    >
+                                        <span>{word}</span>
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     
-                    <div className={`flex items-center justify-between px-2 py-1 ${themeStyles.toolbarBg} border-t`}>
+                    <div className={`flex items-center justify-between px-2 py-0.5 ${themeStyles.toolbarBg} relative`}>
                         <div className="flex items-center gap-1">
-                            <button onClick={() => setListFilter(f => f === 'active' ? 'completed' : 'active')} className={`p-2 rounded-xl transition-colors ${listFilter === 'completed' ? 'text-green-600 bg-green-100' : `opacity-60 ${themeStyles.toolbarText}`}`}><ListChecks className="w-5 h-5" /></button>
-                            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-xl transition-colors ${isSearchOpen ? 'bg-red-500 text-white' : `opacity-60 ${themeStyles.toolbarText}`}`}><Search className="w-5 h-5" /></button>
-                            <button onClick={() => setActiveTab('map')} className={`p-2 rounded-xl transition-colors ${activeTab === 'map' ? 'bg-orange-500 text-white' : `opacity-60 ${themeStyles.toolbarText}`}`}><MapIcon className="w-5 h-5" /></button>
+                            <button onClick={() => setListFilter(f => f === 'active' ? 'completed' : 'active')} className={`p-2 rounded-xl transition-all ${listFilter === 'completed' ? `${themeStyles.activeBg} ${themeStyles.activeText}` : `opacity-60 ${themeStyles.toolbarText}`}`}><ListChecks className="w-5 h-5" /></button>
+                            
+                            <div className="relative">
+                                <button onClick={() => { setIsSearchOpen(!isSearchOpen); triggerHaptic('light'); }} className={`p-2 rounded-xl transition-all ${isSearchOpen || isAnyFilterActive ? `${themeStyles.activeBg} ${themeStyles.activeText}` : `opacity-60 ${themeStyles.toolbarText}`}`}><Search className="w-5 h-5" /></button>
+                                
+                                {isSearchOpen && (
+                                     <div className={`absolute top-full left-0 mt-1 z-[100] w-64 animate-in zoom-in-95 slide-in-from-top-1 duration-200`}>
+                                        <div className={`p-2 rounded-2xl shadow-2xl border flex flex-col gap-3 ${settings.theme === 'batman' ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-200'}`}>
+                                            <div className="flex items-center bg-slate-50 dark:bg-gray-900 rounded-xl px-2">
+                                                <input 
+                                                    autoFocus
+                                                    ref={searchInputRef}
+                                                    value={searchInputValue}
+                                                    onChange={(e) => setSearchInputValue(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleKeywordAdd(searchInputValue);
+                                                            if (!searchInputValue) setIsSearchOpen(false);
+                                                        }
+                                                    }}
+                                                    placeholder="Type & Enter to add..."
+                                                    className={`flex-1 pl-1 pr-2 py-2 outline-none text-xs bg-transparent ${settings.theme === 'batman' ? 'text-white placeholder:text-gray-600' : 'text-slate-900 placeholder:text-slate-400'}`}
+                                                />
+                                                {searchInputValue && (
+                                                    <button onClick={() => setSearchInputValue('')} className="p-1.5 text-gray-400 hover:text-gray-600">
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="px-1">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-2">Append Categories</p>
+                                                <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
+                                                    <button 
+                                                        onClick={() => { setActiveCategories([]); triggerHaptic('light'); }}
+                                                        className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.length === 0 ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                    >
+                                                        Clear
+                                                    </button>
+                                                    {categories.map(cat => (
+                                                        <button 
+                                                            key={cat} 
+                                                            onClick={() => { 
+                                                                setActiveCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+                                                                triggerHaptic('light'); 
+                                                            }}
+                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.includes(cat) ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="px-1">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-2">Append Interests</p>
+                                                <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
+                                                    {interests.map(int => (
+                                                        <button 
+                                                            key={int} 
+                                                            onClick={() => {
+                                                                setActiveInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int]);
+                                                                triggerHaptic('light');
+                                                            }}
+                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeInterests.includes(int) ? `bg-indigo-600 text-white` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                        >
+                                                            #{int}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <button 
+                                                onClick={() => setIsSearchOpen(false)}
+                                                className="w-full py-2 bg-gray-50 dark:bg-gray-700 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
+                                            >
+                                                Finish Search
+                                            </button>
+                                        </div>
+                                     </div>
+                                )}
+                            </div>
+
+                            <button onClick={() => { setActiveTab(activeTab === 'map' ? 'list' : 'map'); triggerHaptic('light'); }} className={`p-2 rounded-xl transition-all ${activeTab === 'map' ? `${themeStyles.activeBg} ${themeStyles.activeText}` : `opacity-60 ${themeStyles.toolbarText}`}`}>{activeTab === 'map' ? <LayoutList className="w-5 h-5" /> : <MapIcon className="w-5 h-5" />}</button>
                         </div>
                         <div className="flex items-center -space-x-2">
-                            <button onClick={() => setSelectedFamilyMember('All')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center z-0 ${selectedFamilyMember === 'All' ? 'border-white bg-slate-600' : 'border-slate-200 opacity-60 bg-slate-400'}`}><Users className="w-3 3 text-white" /></button>
-                            {familyMembers.map((m, i) => <button key={m} onClick={() => setSelectedFamilyMember(m)} className={`w-8 h-8 rounded-full border-2 text-[10px] font-bold text-white ${selectedFamilyMember === m ? 'border-white scale-125 z-10 shadow-lg' : 'border-slate-200 opacity-80'} ${getAvatarColor(m)}`}>{getInitials(m)}</button>)}
+                            <button onClick={() => setSelectedFamilyMember('All')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center z-0 transition-all ${selectedFamilyMember === 'All' ? 'border-white bg-slate-600 scale-110 z-10' : 'border-slate-200 opacity-60 bg-slate-400'}`}><Users className="w-3.5 h-3.5 text-white" /></button>
+                            {familyMembers.map((m) => <button key={m} onClick={() => setSelectedFamilyMember(m)} className={`w-8 h-8 rounded-full border-2 text-[10px] font-bold text-white transition-all ${selectedFamilyMember === m ? 'border-white scale-125 z-10 shadow-lg' : 'border-slate-200 opacity-80'} ${getAvatarColor(m)}`}>{getInitials(m)}</button>)}
                         </div>
                         <div className="flex gap-1">
-                            <button className={`p-2 rounded-xl transition-colors ${!isCompact ? 'bg-slate-100 scale-110' : `opacity-60 ${themeStyles.toolbarText}`}`} onClick={() => setIsCompact(!isCompact)}>{isCompact ? <List className="w-5 h-5" /> : <AlignLeft className="w-5 h-5" />}</button>
-                            <button onClick={() => setSortBy(s => s === 'date' ? 'distance' : 'date')} className={`p-2 rounded-xl transition-colors ${sortBy === 'distance' ? 'bg-slate-100 scale-110' : `opacity-60 ${themeStyles.toolbarText}`}`}><ArrowUpDown className="w-5 h-5" /></button>
+                            <button className={`p-2 rounded-xl transition-all ${isCompact ? `${themeStyles.activeBg} ${themeStyles.activeText}` : `opacity-60 ${themeStyles.toolbarText}`}`} onClick={() => { setIsCompact(!isCompact); triggerHaptic('light'); }}>{isCompact ? <AlignLeft className="w-5 h-5" /> : <List className="w-5 h-5" />}</button>
+                            <button onClick={handleSortToggle} className={`p-2 rounded-xl transition-all ${sortBy === 'distance' ? `${themeStyles.activeBg} ${themeStyles.activeText}` : `opacity-60 ${themeStyles.toolbarText}`}`}><ArrowUpDown className="w-5 h-5" /></button>
                         </div>
                     </div>
                 </>
             )}
         </header>
-        <main className={`flex-1 flex flex-col ${plannerItem || isDashboardTab ? 'overflow-hidden' : 'overflow-y-auto px-2 pb-28 pt-4 no-scrollbar'}`}>
+        <main className={`flex-1 flex flex-col ${plannerItem || isDashboardTab ? 'overflow-hidden' : 'overflow-y-auto px-2 pb-28 pt-0 no-scrollbar'}`}>
             {plannerItem ? (
                  <div className="flex-1 w-full relative h-full animate-in fade-in-scale duration-500"><TripPlanner item={plannerItem} onClose={() => setPlannerItem(null)} onUpdateItem={(u) => setItems(prev => prev.map(i => i.id === u.id ? u : i))} onAddSeparateItem={(n) => setItems(p => [n, ...p])} userLocation={userLocation} theme={settings.theme} travelMode={settings.travelMode} /></div>
             ) : isDashboardTab ? (
                  <Dashboard onBack={() => setActiveTab('list')} items={items} theme={settings.theme} aiInsight={latestAiInsight} onNavigateToItem={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} currentCity={currentCity} onSuggestItem={handleSuggestItem} />
             ) : activeTab === 'list' ? (
-                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-4">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item, idx) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={handleDeleteItem} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={setSearchQuery} />)}</div>
+                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-1.5">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={handleDeleteItem} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={(term) => handleKeywordAdd(term)} />)}</div>
             ) : <div className="h-[75vh] rounded-3xl overflow-hidden shadow-xl relative animate-in fade-in duration-700"><MapView items={displayItems} userLocation={userLocation} proximityRange={settings.proximityRange} onMarkerClick={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} /></div>}
         </main>
         {!plannerItem && (
@@ -408,4 +519,3 @@ function App() {
     </div>
   );
 }
-export default App;
