@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { driveService } from '../services/driveService';
@@ -115,7 +114,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 flex flex-col items-center justify-center p-4 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-500 border border-gray-100 dark:border-gray-800 overflow-y-auto no-scrollbar max-h-[95vh]">
         <div className="w-20 h-20 mb-6 drop-shadow-2xl">
-            <LiquidBucket theme="brand-red" percent={85} />
+            <LiquidBucket theme="brand-red" percent={85} label="JK" />
         </div>
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">just knock it</h1>
         <p className="text-gray-400 dark:text-gray-500 mb-8 font-medium">dream it. bucket it. knock it.</p>

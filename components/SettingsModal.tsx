@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, Moon, Sun, Trash2, Plus, Cloud, Upload, Download, Loader2, 
   Eraser, BellRing, Mic, Tag, Users, FileDown, FileSpreadsheet, 
   Clock, Star, Car, Footprints, Bike, Bus, Database, LogOut, 
-  PlayCircle, Radar, ListFilter, Hash, CheckCircle2
+  PlayCircle, Radar, ListFilter, Hash, CheckCircle2, Ruler
 } from 'lucide-react';
-import { Theme, TravelMode, AppSettings, BucketItem } from '../types';
+import { Theme, TravelMode, AppSettings, BucketItem, DistanceUnit } from '../types';
 import { driveService } from '../services/driveService';
 import { parseCsvToBucketItems, exportToCsv, exportToJson } from '../utils/dataConverter';
 import { triggerHaptic } from '../utils/haptics';
@@ -261,7 +260,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="space-y-4 pt-4 border-t border-gray-800">
                     <div className="flex justify-between items-center mb-1">
                         <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Radar Proximity</h3>
-                        <span className="text-xs font-black text-red-500">{(settings.proximityRange / 1000).toFixed(1)} km</span>
+                        <span className="text-xs font-black text-red-500">{settings.proximityRange / 1000} km</span>
                     </div>
                     <input 
                         type="range" 
@@ -273,6 +272,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="flex items-center gap-2 text-[9px] text-gray-500 font-bold uppercase tracking-widest">
                         <Radar className="w-3 h-3" />
                         Alert distance for nearby dreams
+                    </div>
+                </div>
+
+                {/* Distance Unit Preference */}
+                <div className="space-y-3 pt-4 border-t border-gray-800">
+                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Distance Unit</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                         {(['km', 'mi'] as DistanceUnit[]).map((unit) => (
+                             <button 
+                                key={unit}
+                                onClick={() => { handleUpdate({ distanceUnit: unit }); toast.info(`Units set to ${unit === 'km' ? 'Kilometers' : 'Miles'}.`); }}
+                                className={`flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all ${settings.distanceUnit === unit ? 'border-red-500 bg-red-500/10' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:border-gray-700'}`}
+                             >
+                                <Ruler className={`w-4 h-4 ${settings.distanceUnit === unit ? 'text-red-500' : 'text-gray-600'}`} />
+                                <span className="text-[11px] font-black uppercase tracking-widest">{unit === 'km' ? 'Kilometers' : 'Miles'}</span>
+                             </button>
+                         ))}
                     </div>
                 </div>
 

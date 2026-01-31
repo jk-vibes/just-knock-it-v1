@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, Navigation, CheckCircle2, Circle, Trash2, Calendar, Route, Image as ImageIcon, Check, Snowflake, Flag } from 'lucide-react';
-import { BucketItem, Coordinates, Theme, TravelMode } from '../types';
+import { BucketItem, Coordinates, Theme, TravelMode, DistanceUnit } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -18,6 +18,7 @@ interface BucketListCardProps {
   onSearch: (term: string) => void;
   isHighlighted?: boolean;
   travelMode?: TravelMode;
+  distanceUnit?: DistanceUnit;
 }
 
 const ThemeBackgroundIcon = ({ theme }: { theme?: Theme }) => {
@@ -56,7 +57,7 @@ const ThemeBackgroundIcon = ({ theme }: { theme?: Theme }) => {
 }
 
 export const BucketListCard: React.FC<BucketListCardProps> = ({ 
-  item, userLocation, onToggleComplete, onDelete, onEdit, onViewImages, onPlanTrip, theme, isCompact = false, onSearch, isHighlighted, travelMode = 'driving'
+  item, userLocation, onToggleComplete, onDelete, onEdit, onViewImages, onPlanTrip, theme, isCompact = false, onSearch, isHighlighted, travelMode = 'driving', distanceUnit = 'km'
 }) => {
   const hasCoords = item.coordinates && item.coordinates.latitude !== 0;
 
@@ -225,7 +226,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                     {userLocation && item.coordinates && (
                         <div className={`flex items-center gap-1 px-2 py-1 rounded-md border transition-all duration-300 ${s.pill} group-hover:shadow-sm`}>
                             <span className="text-[10px] font-bold">
-                                {formatDistance(calculateDistance(userLocation, item.coordinates))}
+                                {/* Fix: Explicitly cast distanceUnit to DistanceUnit to satisfy type checker */}
+                                {formatDistance(calculateDistance(userLocation, item.coordinates), distanceUnit as DistanceUnit)}
                             </span>
                         </div>
                     )}

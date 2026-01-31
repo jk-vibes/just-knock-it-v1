@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Loader2, Sparkles, MapPin, Check, X, Tag, List, Lightbulb, Users, Calendar, Sun, Car, Navigation, RefreshCw, Hash, Target, AlertCircle, Mic, MicOff, CheckCircle2, Flag, Save } from 'lucide-react';
 import { analyzeBucketItem, suggestBucketItem, generateRoadTripStops, optimizeRouteOrder } from '../services/geminiService';
@@ -45,81 +44,30 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const isEditMode = mode === 'edit';
 
   const s = useMemo(() => {
-    switch(theme) {
-        case 'elsa':
-            return {
-                modalBase: 'bg-[#f0f9ff] border-cyan-200',
-                textPrimary: 'text-cyan-950',
-                textSecondary: 'text-cyan-600/80',
-                heading: 'text-cyan-900',
-                closeBtn: 'text-cyan-400 hover:text-cyan-600',
-                input: 'bg-white border-cyan-200 text-cyan-900 placeholder:text-cyan-400 focus:border-orange-400',
-                radioText: 'text-cyan-600/80 hover:text-cyan-900',
-                radioAccent: 'accent-orange-500',
-                magicBtn: 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-orange-500/20',
-                inspireBtn: 'bg-white border-cyan-200 text-cyan-600 hover:bg-cyan-50',
-                draftCard: 'bg-white border-cyan-200',
-                draftTitle: 'text-cyan-900',
-                draftText: 'text-cyan-700/80',
-                catActive: 'bg-orange-50 border-orange-400 text-orange-600',
-                catInactive: 'bg-white border-cyan-200 text-cyan-500 hover:border-cyan-300',
-                tagActive: 'bg-orange-500 text-white border-orange-500',
-                tagInactive: 'bg-white text-cyan-600 border-cyan-200 hover:border-cyan-300',
-                backBtn: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200',
-                confirmBtn: 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20',
-                micBtn: 'text-orange-500 hover:bg-orange-50',
-                micActive: 'bg-orange-500 text-white ring-orange-200'
-            };
-        case 'batman':
-            return {
-                modalBase: 'bg-[#1e1e1e] border-gray-800',
-                textPrimary: 'text-white',
-                textSecondary: 'text-gray-400',
-                heading: 'text-white',
-                closeBtn: 'text-gray-500 hover:text-white',
-                input: 'bg-[#2a2a2a] border-gray-800 text-white placeholder:text-gray-500 focus:border-yellow-500',
-                radioText: 'text-gray-400 hover:text-white',
-                radioAccent: 'accent-yellow-500',
-                magicBtn: 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black shadow-yellow-500/20',
-                inspireBtn: 'bg-[#2c3e50] border-gray-700 text-gray-300 hover:bg-[#34495e]',
-                draftCard: 'bg-yellow-900/10 border-yellow-900/30',
-                draftTitle: 'text-yellow-500',
-                draftText: 'text-yellow-200/70',
-                catActive: 'bg-yellow-900/20 border-yellow-500 text-yellow-500',
-                catInactive: 'bg-[#2a2a2a] border-gray-700 text-gray-400 hover:border-gray-500',
-                tagActive: 'bg-yellow-500 text-black border-yellow-500',
-                tagInactive: 'bg-[#2a2a2a] text-gray-400 border-gray-700 hover:border-gray-500',
-                backBtn: 'bg-[#2a2a2a] text-gray-400 hover:bg-[#333]',
-                confirmBtn: 'bg-yellow-500 text-black hover:bg-yellow-400 shadow-yellow-500/20',
-                micBtn: 'text-yellow-500 hover:bg-yellow-900/30',
-                micActive: 'bg-yellow-500 text-black ring-yellow-900/40'
-            };
-        case 'marvel':
-        default:
-            return {
-                modalBase: 'bg-white border-slate-200',
-                textPrimary: 'text-slate-900',
-                textSecondary: 'text-slate-500',
-                heading: 'text-slate-900',
-                closeBtn: 'text-slate-400 hover:text-slate-600',
-                input: 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-red-500',
-                radioText: 'text-slate-500 hover:text-slate-900',
-                radioAccent: 'accent-red-500',
-                magicBtn: 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-red-600/20',
-                inspireBtn: 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200',
-                draftCard: 'bg-red-50 border-red-100',
-                draftTitle: 'text-red-900',
-                draftText: 'text-red-800/70',
-                catActive: 'bg-red-50 border-red-500 text-red-600',
-                catInactive: 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300',
-                tagActive: 'bg-slate-900 text-white border-slate-900',
-                tagInactive: 'bg-white text-slate-500 border-slate-200 hover:border-slate-300',
-                backBtn: 'bg-slate-100 text-slate-500 hover:bg-slate-200',
-                confirmBtn: 'bg-red-600 text-white hover:bg-red-700 shadow-red-600/20',
-                micBtn: 'text-red-500 hover:bg-red-50',
-                micActive: 'bg-red-600 text-white ring-red-200'
-            };
-    }
+    // Standardized dark UI to match requested screenshot
+    return {
+        modalBase: 'bg-[#121212] border-gray-800',
+        textPrimary: 'text-white',
+        textSecondary: 'text-gray-400',
+        heading: 'text-white',
+        closeBtn: 'text-gray-500 hover:text-white',
+        input: 'bg-[#1a1a1a] border-[#ff5f5f] text-white placeholder:text-gray-500 focus:border-[#ef4444]',
+        radioText: 'text-gray-400 hover:text-white',
+        radioAccent: 'accent-red-500',
+        magicBtn: 'bg-gradient-to-r from-[#cc392b] to-[#8e1c14] text-white shadow-xl',
+        inspireBtn: 'bg-[#1a1c2e] border border-blue-900/50 text-white hover:bg-[#252945]',
+        draftCard: 'bg-red-900/10 border-red-900/30',
+        draftTitle: 'text-red-500',
+        draftText: 'text-red-200/70',
+        catActive: 'bg-red-900/20 border-red-500 text-red-500',
+        catInactive: 'bg-[#2a2a2a] border-gray-700 text-gray-400 hover:border-gray-500',
+        tagActive: 'bg-red-500 text-white border-red-500',
+        tagInactive: 'bg-[#2a2a2a] text-gray-400 border-gray-700 hover:border-gray-500',
+        backBtn: 'bg-[#2a2a2a] text-gray-400 hover:bg-[#333]',
+        confirmBtn: 'bg-red-600 text-white hover:bg-red-500 shadow-red-500/20',
+        micBtn: 'text-red-500 hover:bg-red-900/30',
+        micActive: 'bg-red-500 text-white ring-red-900/40'
+    };
   }, [theme]);
 
   useEffect(() => {
@@ -133,11 +81,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       const transcript = Array.from(event.results).map((result: any) => result[0]).map((result: any) => result.transcript).join('');
       setInput(transcript);
     };
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-      if (event.error === 'not-allowed') setValidationError("Microphone access denied.");
-    };
+    recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
     recognitionRef.current = recognition;
     return () => { if (recognitionRef.current) recognitionRef.current.stop(); };
@@ -159,15 +103,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             setCompletedDate(initialData.completedAt ? new Date(initialData.completedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
             setInput(initialData.title);
             setTargetDate(initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '');
-            
-            if (initialData.type) {
-                setTripType(initialData.type);
-                if (initialData.type === 'roadtrip' && initialData.roadTrip) {
-                    setStartLocation(initialData.roadTrip.startLocation || '');
-                }
-            } else {
-                setTripType(!(initialData as any).coordinates ? 'goal' : 'destination');
-            }
+            if (initialData.type) setTripType(initialData.type);
         } else {
             setDraft(null); 
             setInput(''); 
@@ -182,39 +118,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
   }, [isOpen, initialData, isEditMode]);
 
-  useEffect(() => {
-      if (draft && draft.interests && !isEditMode) {
-          setSelectedInterests(prev => Array.from(new Set([...prev, ...draft.interests!])));
-      }
-  }, [draft, isEditMode]);
-
   const handleMagicFill = async () => {
     if (!input.trim()) return;
     const requestId = ++requestRef.current;
     setIsAnalyzing(true);
     setValidationError(null);
     try {
-        let result: BucketItemDraft | null = null;
-        if (tripType === 'destination' || tripType === 'goal') {
-            result = await analyzeBucketItem(input, categories, tripType);
-        } else {
-            const stops = await generateRoadTripStops(startLocation || "current location", input);
-            if (requestRef.current !== requestId) return;
-            const optimized = await optimizeRouteOrder(stops);
-            result = {
-                title: `Road Trip to ${input}`,
-                description: `A scenic journey from ${startLocation || 'here'} to ${input} with ${optimized.length} stops.`,
-                type: 'roadtrip',
-                locationName: input,
-                category: 'Adventure',
-                interests: ['Road Trip', 'Adventure', 'Driving'],
-                roadTrip: { startLocation, stops: optimized }
-            };
-        }
+        const result = await analyzeBucketItem(input, categories, tripType);
         if (requestRef.current === requestId) {
             setDraft(result);
             if (result && result.category) setSelectedCategory(result.category);
+            if (result && result.interests) setSelectedInterests(result.interests);
             setIsAnalyzing(false);
+            triggerHaptic('success');
         }
     } catch (e) { if (requestRef.current === requestId) setIsAnalyzing(false); }
   };
@@ -228,7 +144,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           if (requestRef.current === requestId) {
               setDraft(result);
               if (result.category) setSelectedCategory(result.category);
+              if (result.interests) setSelectedInterests(result.interests);
               setIsInspiring(false);
+              triggerHaptic('light');
           }
       } catch (e) { if (requestRef.current === requestId) setIsInspiring(false); }
   };
@@ -236,8 +154,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const handleConfirm = () => {
     if (draft || input.trim()) {
       const finalTitle = draft?.title || input;
-      
-      // Fixed duplicate check: Only check other items, excluding the one currently being edited
       const isDuplicate = items.some(item => 
         item.title.toLowerCase().trim() === finalTitle.toLowerCase().trim() && 
         item.id !== editingId
@@ -249,9 +165,6 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         return;
       }
 
-      const completedTimestamp = isCompleted ? new Date(completedDate).getTime() : undefined;
-      const targetTimestamp = targetDate ? new Date(targetDate).getTime() : undefined;
-      
       onAdd({
         ...(draft || {}),
         title: finalTitle,
@@ -259,122 +172,85 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         category: selectedCategory || draft?.category || 'Travel',
         interests: selectedInterests,
         isCompleted: isCompleted,
-        completedAt: completedTimestamp,
-        dueDate: targetTimestamp,
+        completedAt: isCompleted ? new Date(completedDate).getTime() : undefined,
+        dueDate: targetDate ? new Date(targetDate).getTime() : undefined,
       } as BucketItemDraft);
       onClose();
     }
   };
 
-  const toggleVoiceInput = () => {
-    if (!SpeechRecognition) return;
-    if (isListening) recognitionRef.current.stop();
-    else { setValidationError(null); recognitionRef.current.start(); }
-  };
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className={`${s.modalBase} rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border transition-all duration-300`}>
-        <div className="p-6 overflow-y-auto no-scrollbar flex-1">
-          <div className="flex justify-between items-center mb-1">
-            <h2 className={`text-xl font-bold ${s.heading}`}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`${s.modalBase} rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border transition-all duration-300`}>
+        <div className="p-8 overflow-y-auto no-scrollbar flex-1">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className={`text-xl font-black ${s.heading}`}>
               {isEditMode ? 'Edit Dream' : 'New Dream'}
             </h2>
-            <button onClick={onClose} className={`p-1 ${s.closeBtn}`}><X className="w-5 h-5" /></button>
+            <button onClick={onClose} className={`p-2 rounded-full ${s.closeBtn}`}><X className="w-5 h-5" /></button>
           </div>
 
           {(!draft && !isEditMode) ? (
-            <div className="space-y-4">
-                <p className={`text-sm leading-relaxed mb-2 ${s.textSecondary}`}>
-                    Type your dream and let AI fill in the details.
+            <div className="space-y-6">
+                <p className={`text-[12px] font-medium leading-relaxed ${s.textSecondary}`}>
+                    Type your dream (e.g., "See the Northern Lights" or "Visit Tokyo") and let AI fill in the details.
                 </p>
 
-                <div className="relative group/input">
+                <div className="relative">
                     <textarea 
                         value={input} 
                         onChange={(e) => { setInput(e.target.value); setValidationError(null); }} 
                         rows={4} 
-                        placeholder={tripType === 'goal' ? "What's your goal?" : "What's your dream destination?"} 
-                        className={`w-full p-4 pr-12 rounded-xl border outline-none resize-none transition-all ${s.input} ${isListening ? 'ring-2 ring-red-500 border-transparent' : ''}`} 
+                        placeholder="What's your dream? (e.g. Travel to Paris, Learn Guitar, Buy a House...)" 
+                        className={`w-full p-6 pr-12 rounded-3xl border-2 outline-none resize-none transition-all text-sm font-medium ${s.input}`} 
                     />
                     <button 
-                        onClick={toggleVoiceInput}
-                        className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-300 ${isListening ? `${s.micActive} animate-pulse scale-110` : `${s.micBtn} hover:scale-110`}`}
+                        onClick={() => { if (!SpeechRecognition) return; isListening ? recognitionRef.current.stop() : recognitionRef.current.start(); }}
+                        className={`absolute bottom-4 right-4 p-2 rounded-full transition-all ${isListening ? `${s.micActive} animate-pulse` : `${s.micBtn}`}`}
                     >
-                        {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 opacity-60" />}
+                        {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 opacity-40" />}
                     </button>
                 </div>
 
-                <div className="flex gap-4 animate-in fade-in slide-in-from-top-1 flex-wrap">
-                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                        <input type="radio" checked={tripType === 'destination'} onChange={() => setTripType('destination')} className={s.radioAccent} />
-                        <MapPin className="w-3 h-3" /> <span>Destination</span>
-                    </label>
-                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                        <input type="radio" checked={tripType === 'roadtrip'} onChange={() => setTripType('roadtrip')} className={s.radioAccent} />
-                        <Car className="w-3 h-3" /> <span>Road Trip</span>
-                    </label>
-                    <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer ${s.radioText}`}>
-                        <input type="radio" checked={tripType === 'goal'} onChange={() => setTripType('goal')} className={s.radioAccent} />
-                        <Target className="w-3 h-3" /> <span>Goal</span>
-                    </label>
-                </div>
-
-                {tripType === 'roadtrip' && (
-                    <div className="animate-in slide-in-from-left duration-300">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Starting From</label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input type="text" value={startLocation} onChange={(e) => setStartLocation(e.target.value)} placeholder="City or 'current location'" className={`w-full pl-9 p-3 rounded-xl border outline-none text-sm transition-all ${s.input}`} />
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex gap-3 pt-2">
-                    <button onClick={handleMagicFill} disabled={isAnalyzing || !input.trim()} className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 ${s.magicBtn}`}>
+                <div className="grid grid-cols-2 gap-4">
+                    <button onClick={handleMagicFill} disabled={isAnalyzing || !input.trim()} className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 ${s.magicBtn}`}>
                         {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {isAnalyzing ? 'Analyzing...' : 'Magic Fill'}
+                        {isAnalyzing ? 'Filling...' : 'Magic Fill'}
                     </button>
-                    <button onClick={handleInspireMe} disabled={isInspiring} className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm border transition-all ${s.inspireBtn}`}>
+                    <button onClick={handleInspireMe} disabled={isInspiring} className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 ${s.inspireBtn}`}>
                         {isInspiring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+                        Inspire Me
                     </button>
                 </div>
             </div>
           ) : (
             <div className="space-y-6 animate-in zoom-in-95 duration-300">
-                <div className={`p-4 rounded-2xl border transition-all duration-500 ${s.draftCard}`}>
-                    <div className="flex justify-between items-start mb-2">
-                        {isEditMode ? (
-                           <input 
-                              type="text" 
-                              value={input} 
-                              onChange={(e) => setInput(e.target.value)} 
-                              className={`bg-transparent border-none outline-none text-lg font-black leading-tight w-full ${s.draftTitle}`}
-                           />
-                        ) : (
-                           <h3 className={`text-lg font-black leading-tight ${s.draftTitle}`}>{draft?.title}</h3>
-                        )}
-                        <MapPin className="w-5 h-5 text-red-500 shrink-0" />
-                    </div>
-                    {isEditMode ? (
-                        <textarea 
-                            value={draft?.description || ''} 
-                            onChange={(e) => setDraft(prev => prev ? {...prev, description: e.target.value} : null)}
-                            rows={3}
-                            className={`w-full bg-transparent border-none outline-none text-xs leading-relaxed resize-none ${s.draftText}`}
+                <div className={`p-5 rounded-3xl border transition-all duration-500 ${s.draftCard}`}>
+                    <div className="flex justify-between items-start mb-3">
+                        <input 
+                            type="text" 
+                            value={draft?.title || input} 
+                            onChange={(e) => setDraft(p => p ? {...p, title: e.target.value} : null)} 
+                            className={`bg-transparent border-none outline-none text-xl font-black leading-tight w-full ${s.draftTitle}`}
                         />
-                    ) : (
-                        <p className={`text-xs leading-relaxed ${s.draftText}`}>{draft?.description}</p>
-                    )}
+                        <Sparkles className="w-5 h-5 text-red-500 shrink-0 animate-pulse" />
+                    </div>
+                    <textarea 
+                        value={draft?.description || ''} 
+                        onChange={(e) => setDraft(p => p ? {...p, description: e.target.value} : null)}
+                        rows={3}
+                        className={`w-full bg-transparent border-none outline-none text-xs leading-relaxed resize-none ${s.draftText}`}
+                        placeholder="Add a description..."
+                    />
                 </div>
 
                 <div>
-                    <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Category</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-3 ml-1 text-gray-500">Category</h4>
                     <div className="grid grid-cols-4 gap-2">
                         {categories.slice(0, 8).map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-[9px] font-bold transition-all ${selectedCategory === cat ? s.catActive : s.catInactive}`}>
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-[9px] font-black transition-all ${selectedCategory === cat ? s.catActive : s.catInactive}`}>
                                 <CategoryIcon category={cat} className="w-4 h-4" />
                                 <span className="truncate w-full text-center">{cat}</span>
                             </button>
@@ -383,71 +259,44 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 </div>
 
                 <div>
-                    <h4 className={`text-[10px] font-bold uppercase tracking-widest mb-3 ml-1 ${s.textSecondary}`}>Interests</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-3 ml-1 text-gray-500">Interests</h4>
                     <div className="flex flex-wrap gap-2">
                         {availableInterests.map(int => (
-                            <button key={int} onClick={() => setSelectedInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int])} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${selectedInterests.includes(int) ? s.tagActive : s.tagInactive}`}>
+                            <button key={int} onClick={() => setSelectedInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int])} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${selectedInterests.includes(int) ? s.tagActive : s.tagInactive}`}>
                                 #{int}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                <div className="pt-6 border-t border-gray-800 space-y-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600"><Flag className="w-4 h-4" /></div>
-                            <span className={`text-xs font-bold ${s.textPrimary}`}>Target Date</span>
-                        </div>
-                        <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className={`p-2 rounded-xl border outline-none text-[10px] ${s.input}`} />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-green-500/10 text-green-600"><CheckCircle2 className="w-4 h-4" /></div>
-                            <span className={`text-xs font-bold ${s.textPrimary}`}>Knocked it out?</span>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={isCompleted} onChange={(e) => setIsCompleted(e.target.checked)} className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        </label>
+                        <span className={`text-xs font-black uppercase tracking-widest ${s.textPrimary}`}>Knocked it?</span>
+                        <input type="checkbox" checked={isCompleted} onChange={(e) => setIsCompleted(e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-gray-800 text-red-500" />
                     </div>
                     {isCompleted && (
-                        <div className="animate-in slide-in-from-top duration-300">
-                            <input type="date" value={completedDate} onChange={(e) => setCompletedDate(e.target.value)} className={`w-full p-3 rounded-xl border outline-none text-xs ${s.input}`} />
-                        </div>
+                        <input type="date" value={completedDate} onChange={(e) => setCompletedDate(e.target.value)} className="w-full p-4 rounded-xl border border-gray-800 bg-[#1a1a1a] text-white outline-none text-xs" />
                     )}
                 </div>
             </div>
           )}
 
           {validationError && (
-              <div className="mt-4 p-3 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center gap-2 text-xs font-bold animate-shake">
-                  <AlertCircle className="w-4 h-4" />
+              <div className="mt-4 p-4 rounded-xl bg-red-950/30 text-red-400 border border-red-900/50 flex items-center gap-3 text-xs font-bold animate-shake">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
                   {validationError}
               </div>
           )}
         </div>
 
-        <div className={`p-6 border-t ${s.border} shrink-0 bg-white/50 dark:bg-black/20 backdrop-blur-sm`}>
-            <div className="flex gap-3">
-                {draft || isEditMode ? (
-                    <>
-                        <button onClick={onClose} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
-                            Cancel
-                        </button>
-                        <button onClick={handleConfirm} className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${s.confirmBtn}`}>
-                            {isEditMode ? <Save className="w-4 h-4" /> : null}
-                            {isEditMode ? 'Save Changes' : 'Just Knock It'}
-                        </button>
-                    </>
-                ) : (
-                    <button onClick={onClose} className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all ${s.backBtn}`}>
-                        Cancel
-                    </button>
-                )}
+        {(draft || isEditMode) && (
+            <div className="p-8 border-t border-gray-800 shrink-0 bg-black/40 backdrop-blur-md">
+                <button onClick={handleConfirm} className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${s.confirmBtn}`}>
+                    <Save className="w-4 h-4" />
+                    {isEditMode ? 'Save Changes' : 'Just Knock It'}
+                </button>
             </div>
-        </div>
+        )}
       </div>
     </div>
   );

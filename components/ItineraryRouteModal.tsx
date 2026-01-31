@@ -1,8 +1,7 @@
-
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as L from 'leaflet';
 import { ArrowLeft, MapPin, Navigation, Plus, Trash2, Save, Map as MapIcon, List as ListIcon, Sparkles, Loader2, Footprints, MoreVertical, Zap, Flag, GripVertical, Star, Clock, X, Info, Circle, CheckCircle2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
-import { BucketItem, Coordinates, ItineraryItem, Theme, TravelMode } from '../types';
+import { BucketItem, Coordinates, ItineraryItem, Theme, TravelMode, DistanceUnit } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { getPlaceDetails, optimizeRouteOrder, generateItineraryForLocation } from '../services/geminiService';
 import { CategoryIcon } from './CategoryIcon';
@@ -17,6 +16,7 @@ interface TripPlannerProps {
   userLocation?: Coordinates | null;
   theme: Theme;
   travelMode?: TravelMode;
+  distanceUnit?: DistanceUnit;
 }
 
 // --- SUB-COMPONENT: FULL SCREEN MAP ---
@@ -236,7 +236,7 @@ const StopDetailsModal = ({ stop, onClose, travelMode = 'driving' }: { stop: Iti
     );
 };
 
-export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation, theme, travelMode = 'driving' as TravelMode }) => {
+export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdateItem, onAddSeparateItem, userLocation, theme, travelMode = 'driving' as TravelMode, distanceUnit = 'km' }) => {
   const [stops, setStops] = useState<ItineraryItem[]>(item?.itinerary || []);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -415,7 +415,8 @@ export const TripPlanner: React.FC<TripPlannerProps> = ({ item, onClose, onUpdat
                          <span className={`${s.textDim} text-[10px]`}>|</span>
                          <div className={`flex items-center gap-3 text-[10px] font-medium ${s.textDim}`}>
                             {item.locationName && <span className="truncate max-w-[80px]">{item.locationName}</span>}
-                            <span className="flex items-center gap-1"><Footprints className="w-3 h-3" /> {formatDistance(stats.dist)}</span>
+                            {/* Fix: Explicitly cast distanceUnit to DistanceUnit for formatDistance */}
+                            <span className="flex items-center gap-1"><Footprints className="w-3 h-3" /> {formatDistance(stats.dist, distanceUnit as DistanceUnit)}</span>
                             <span className="flex items-center gap-1"><Flag className="w-3 h-3" /> {stops.length}</span>
                         </div>
                     </div>

@@ -1,4 +1,3 @@
-
 export interface Coordinates {
   latitude: number;
   longitude: number;
@@ -34,6 +33,8 @@ export interface BucketItem {
   completedAt?: number;
   createdAt: number;
   dueDate?: number;
+  startDate?: number; // New: Trip start timestamp
+  endDate?: number;   // New: Trip end timestamp
   category?: string;
   interests?: string[];
   owner?: string;
@@ -56,6 +57,8 @@ export interface BucketItemDraft {
   isCompleted?: boolean;
   completedAt?: number;
   dueDate?: number;
+  startDate?: number; // New
+  endDate?: number;   // New
   bestTimeToVisit?: string;
   itinerary?: ItineraryItem[];
   roadTrip?: RoadTripDetails;
@@ -73,11 +76,13 @@ export interface AppNotification {
 
 export type Theme = 'marvel' | 'batman' | 'elsa';
 export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';
+export type DistanceUnit = 'km' | 'mi';
 
 export interface AppSettings {
   theme: Theme;
   proximityRange: number;
   travelMode: TravelMode;
+  distanceUnit: DistanceUnit;
   notificationsEnabled: boolean;
   voiceAlertsEnabled: boolean;
   autoBackupEnabled: boolean;

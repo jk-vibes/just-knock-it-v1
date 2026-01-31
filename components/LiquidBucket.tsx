@@ -8,7 +8,7 @@ interface LiquidBucketProps {
   label?: string;
 }
 
-export const LiquidBucket: React.FC<LiquidBucketProps> = ({ theme, isFab = false, percent = 50, label = "JK" }) => {
+export const LiquidBucket: React.FC<LiquidBucketProps> = ({ theme, isFab = false, percent = 50, label = "" }) => {
     const themes = {
         marvel: { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#1e3a8a", text: "#1e3a8a" },
         batman: { liquid: "#EAB308", bg: "#111827", stroke: "#374151", text: "#FFFFFF" },
@@ -37,7 +37,7 @@ export const LiquidBucket: React.FC<LiquidBucketProps> = ({ theme, isFab = false
             {label && (
                 <text 
                     x="256" 
-                    y="350" 
+                    y="390" 
                     fontFamily="Arial Black, Arial, sans-serif" 
                     fontWeight="900" 
                     fontSize={label === "?" ? "240" : "140"} 

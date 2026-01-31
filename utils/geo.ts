@@ -1,5 +1,6 @@
+import { Coordinates, DistanceUnit } from '../types';
 
-import { Coordinates } from '../types';
+const METERS_TO_MILES = 0.000621371;
 
 // Calculate distance between two points in meters using Haversine formula
 export const calculateDistance = (coord1: Coordinates, coord2: Coordinates): number => {
@@ -28,7 +29,16 @@ export const calculateDistance = (coord1: Coordinates, coord2: Coordinates): num
   return R * c;
 };
 
-export const formatDistance = (meters: number): string => {
+export const formatDistance = (meters: number, unit: DistanceUnit = 'km'): string => {
+  if (unit === 'mi') {
+    const miles = meters * METERS_TO_MILES;
+    if (miles < 0.1) {
+        return `${Math.round(meters * 3.28084)}ft`;
+    }
+    return `${miles.toFixed(1)}mi`;
+  }
+
+  // KM logic
   if (meters < 1000) {
     return `${Math.round(meters)}m`;
   }
@@ -36,7 +46,11 @@ export const formatDistance = (meters: number): string => {
 };
 
 // Format distance for Text-to-Speech (full words)
-export const getDistanceSpeech = (meters: number): string => {
+export const getDistanceSpeech = (meters: number, unit: DistanceUnit = 'km'): string => {
+  if (unit === 'mi') {
+    const miles = meters * METERS_TO_MILES;
+    return `${miles.toFixed(1)} miles`;
+  }
   if (meters < 1000) {
     return `${Math.round(meters)} meters`;
   }

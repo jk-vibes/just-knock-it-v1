@@ -1,40 +1,25 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { 
-  BarChart3, 
-  Sparkles, 
   Trophy, 
-  TrendingUp, 
-  ChevronRight, 
   Activity, 
-  Globe, 
   Flame, 
-  Target, 
-  ArrowUpRight,
-  Clock,
-  Calendar,
-  MapPin,
-  CheckCircle2,
-  Zap,
-  Star,
-  Layers,
-  Sun,
-  Moon,
+  MapPin, 
+  Zap, 
+  SunMedium, 
+  Route, 
+  Timer,
   Compass,
+  PieChart,
+  CalendarDays,
+  ChevronRight,
+  TrendingUp,
   Wind,
   CloudRain,
-  Snowflake,
-  SunMedium,
-  Route,
-  BarChart,
-  Lightbulb,
-  Loader2,
-  Plus
+  Snowflake
 } from 'lucide-react';
-import { BucketItem, BucketItemDraft, Theme } from '../types';
+import { BucketItem, BucketItemDraft, Theme, AppSettings } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { CategoryIcon } from './CategoryIcon';
-import { suggestBucketItem } from '../services/geminiService';
-import { triggerHaptic } from '../utils/haptics';
 
 interface DashboardProps {
   onBack: () => void;
@@ -42,63 +27,51 @@ interface DashboardProps {
   theme: Theme;
   aiInsight?: { title: string; message: string } | null;
   onNavigateToItem?: (id: string) => void;
-  onFilterAction?: (query: string, filterType: 'active' | 'completed') => void;
+  onFilterAction?: (params: { year?: number, month?: number, season?: string, category?: string }) => void;
   currentCity?: string;
   onSuggestItem: (suggestion: BucketItemDraft) => void;
+  settings: AppSettings;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
-  onBack, 
   items, 
   theme, 
-  aiInsight, 
   onNavigateToItem, 
   onFilterAction,
   currentCity,
-  onSuggestItem
+  settings
 }) => {
   const stats = useMemo(() => {
-    const completed = items.filter(i => i.completed).sort((a, b) => {
-        const dateA = typeof a.completedAt === 'number' ? a.completedAt : 0;
-        const dateB = typeof b.completedAt === 'number' ? b.completedAt : 0;
-        return dateB - dateA;
-    });
-    const pending = items.filter(i => !i.completed);
-    const now = Date.now();
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-    const currentYear = new Date().getFullYear();
+    const completed = items.filter(i => i.completed).sort((a, b) => (Number(b.completedAt) || 0) - (Number(a.completedAt) || 0));
     
-    let totalDist = 0;
+    // Distance Calculation (Raw Meters)
+    let totalDistMeters = 0;
     for (let i = 1; i < completed.length; i++) {
-        const prevItem = completed[i - 1];
-        const currItem = completed[i];
-        if (prevItem?.coordinates && currItem?.coordinates) {
-            totalDist += calculateDistance(prevItem.coordinates, currItem.coordinates);
+        if (completed[i-1].coordinates && completed[i].coordinates) {
+            totalDistMeters += calculateDistance(completed[i-1].coordinates!, completed[i].coordinates!);
         }
     }
 
-    const recentCompletions = completed.filter(i => i.completedAt && i.completedAt > thirtyDaysAgo).length;
-    
-    const ytdMonthly = Array.from({ length: 12 }).map((_, i) => {
-        const d = new Date(currentYear, i, 1);
-        const monthLabel = d.toLocaleString('default', { month: 'narrow' });
-        const count = completed.filter(item => {
-            if (!item.completedAt) return false;
-            const itemDate = new Date(item.completedAt);
-            return itemDate.getFullYear() === currentYear && itemDate.getMonth() === i;
-        }).length;
-        return { label: monthLabel, count, isCurrent: i === new Date().getMonth() };
+    // Monthly performance
+    const monthlyCounts = Array(12).fill(0);
+    completed.forEach(item => {
+        if (item.completedAt) {
+            monthlyCounts[new Date(item.completedAt).getMonth()]++;
+        }
     });
+    const peakMonthIndex = monthlyCounts.indexOf(Math.max(...monthlyCounts));
+    const peakMonth = new Date(2000, peakMonthIndex).toLocaleString('default', { month: 'long' });
 
-    const totalYtd = ytdMonthly.reduce((sum, m) => sum + m.count, 0);
-
-    const dayProfile = completed.reduce((acc, item) => {
-        if (!item.completedAt) return acc;
-        const day = new Date(item.completedAt).getDay();
-        const isWeekend = day === 0 || day === 6;
-        if (isWeekend) acc.weekend++; else acc.weekday++;
+    // Category distribution
+    const categoryCounts = completed.reduce((acc, item) => {
+        const cat = item.category || 'Other';
+        acc[cat] = (acc[cat] || 0) + 1;
         return acc;
-    }, { weekday: 0, weekend: 0 });
+    }, {} as Record<string, number>);
+
+    const topCategories = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4);
 
     const seasonalCounts = completed.reduce((acc, item) => {
         if (!item.completedAt) return acc;
@@ -110,37 +83,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return acc;
     }, { spring: 0, summer: 0, fall: 0, winter: 0 });
 
-    let totalStops = 0;
-    let completedStops = 0;
-    items.forEach(item => {
-        if (item.itinerary) {
-            totalStops += item.itinerary.length;
-            completedStops += item.itinerary.filter(s => s.completed).length;
-        }
-    });
-
     const completionTimes = completed
-        .filter(i => i.completedAt && i.createdAt)
-        .map(i => (i.completedAt! - i.createdAt) / (1000 * 60 * 60 * 24));
+        .filter(i => i.completedAt !== undefined && i.createdAt !== undefined)
+        /* Fix: Use explicit type casting to ensure number type for subtraction */
+        .map(i => ((i.completedAt as number) - (i.createdAt as number)) / (1000 * 60 * 60 * 24));
     const avgDaysToKnock = completionTimes.length > 0 
         ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length)
         : 0;
 
-    const globalRank = totalDist > 10000000 ? 'Legend' : totalDist > 5000000 ? 'Globetrotter' : totalDist > 1000000 ? 'Voyager' : 'Beginner';
-
     return {
         totalCompleted: completed.length,
         totalItems: items.length,
-        totalDist,
-        recentCompletions,
-        globalRank,
-        dayProfile,
+        totalDistMeters,
+        peakMonth,
+        topCategories,
         seasonalCounts,
-        ytdMonthly,
-        totalYtd,
-        currentYear,
-        totalStops,
-        completedStops,
         avgDaysToKnock,
         recentAchievements: completed.slice(0, 4),
         uniqueCities: new Set(items.map(i => i.locationName).filter(Boolean)).size,
@@ -150,85 +107,95 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const s = useMemo(() => {
     switch(theme) {
         case 'elsa': return { 
-          card: 'bg-white/95 border-cyan-100 backdrop-blur-xl rounded-xl', 
+          card: 'bg-white/95 border-cyan-100 rounded-xl', 
           accent: 'text-orange-500', 
-          accentBg: 'bg-orange-500',
+          accentHex: '#F97316',
           headerBg: 'from-cyan-600 to-sky-500',
           progressTrack: 'bg-cyan-50',
           progressFill: 'bg-orange-500',
-          chartBar: 'bg-orange-300',
-          chartBarActive: 'bg-orange-600',
           badgeBg: 'bg-white/95',
           badgeText: 'text-orange-600',
-          badgeLabel: 'text-cyan-600',
           badgeBorder: 'border-orange-200',
-          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(249,115,22,0.3)]'
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(249,115,22,0.3)]',
         };
         case 'batman': return { 
-          card: 'bg-gray-950 border-gray-800 backdrop-blur-xl rounded-xl', 
+          card: 'bg-gray-950 border-gray-800 rounded-xl', 
           accent: 'text-yellow-500', 
-          accentBg: 'bg-yellow-500',
+          accentHex: '#EAB308',
           headerBg: 'from-gray-900 to-black',
           progressTrack: 'bg-gray-800',
           progressFill: 'bg-yellow-500',
-          chartBar: 'bg-gray-700',
-          chartBarActive: 'bg-yellow-500',
           badgeBg: 'bg-yellow-500',
           badgeText: 'text-black',
-          badgeLabel: 'text-gray-400',
           badgeBorder: 'border-yellow-600',
-          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(0,0,0,0.5)]'
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(0,0,0,0.5)]',
         };
         default: return { 
-          card: 'bg-white border-slate-200 backdrop-blur-xl rounded-xl', 
+          card: 'bg-white border-slate-200 rounded-xl', 
           accent: 'text-red-500', 
-          accentBg: 'bg-red-500',
+          accentHex: '#EF4444',
           headerBg: 'from-blue-950 to-blue-800',
           progressTrack: 'bg-slate-100',
           progressFill: 'bg-red-500',
-          chartBar: 'fill-slate-200',
-          chartBarActive: 'fill-red-500',
           badgeBg: 'bg-white',
           badgeText: 'text-red-600',
-          badgeLabel: 'text-slate-400',
           badgeBorder: 'border-red-100',
-          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(239,68,68,0.2)]'
+          stampShadow: 'shadow-[3px_3px_0px_0px_rgba(239,68,68,0.2)]',
         };
     }
   }, [theme]);
 
   const completionRate = stats.totalItems > 0 ? (stats.totalCompleted / stats.totalItems) * 100 : 0;
 
+  // Doughnut Chart Logic - Circumference of 100 units (R=15.9)
+  const doughnutData = useMemo(() => {
+    const total = stats.topCategories.reduce((acc, [_, count]) => acc + count, 0);
+    let cumulative = 0;
+    return stats.topCategories.map(([cat, count], i) => {
+        const percent = total > 0 ? (count / total) * 100 : 0;
+        const currentCumulative = cumulative;
+        cumulative += percent;
+        const opacities = [1, 0.7, 0.4, 0.2];
+        return { 
+            cat, 
+            count, 
+            percent, 
+            offset: 100 - currentCumulative, // Standard clockwise SVG dashoffset
+            color: s.accentHex,
+            opacity: opacities[i % opacities.length]
+        };
+    });
+  }, [stats.topCategories, s.accentHex]);
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-black animate-in fade-in duration-500 overflow-hidden">
-        {/* Compact Hero Header */}
+        {/* Dynamic Header */}
         <div className="px-4 pt-4 pb-0 shrink-0 relative">
-          <div className={`px-5 py-3 flex items-center justify-between bg-gradient-to-br ${s.headerBg} text-white shadow-xl rounded-xl border border-white/10 relative overflow-hidden group min-h-[75px]`}>
+          <div className={`px-5 py-4 flex items-center justify-between bg-gradient-to-br ${s.headerBg} text-white shadow-xl rounded-xl border border-white/10 relative overflow-hidden group`}>
             <div className="absolute top-0 left-0 p-4 opacity-5 pointer-events-none">
                 <Zap className="w-16 h-16" />
             </div>
             
             <div className="flex flex-col relative z-10">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <Activity className="w-2.5 h-2.5 text-red-400 animate-pulse" />
-                    <h2 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80">Life Progress</h2>
+                    <Activity className="w-3 h-3 text-red-400 animate-pulse" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest opacity-80">Life Progress</h2>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black">{Math.round(completionRate)}%</span>
-                    <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Achieved</span>
+                    <span className="text-3xl font-black">{Math.round(completionRate)}%</span>
+                    <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest whitespace-nowrap">dreams knocked</span>
                 </div>
             </div>
 
             <div className="relative z-10 opacity-30">
-               <Trophy className="w-8 h-8" />
+               <Trophy className="w-10 h-10" />
             </div>
           </div>
 
-          {/* 3D Stamp City Badge */}
           {currentCity && (
-            <div className={`absolute -bottom-2 right-8 z-30 transition-all transform rotate-[-3deg] active:scale-95 duration-500 animate-in slide-in-from-right-4`}>
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border-2 ${s.badgeBg} ${s.badgeBorder} ${s.stampShadow} transition-all cursor-default`}>
-                  <MapPin className={`w-2.5 h-2.5 ${s.badgeText}`} />
+            <div className="absolute -bottom-2 right-8 z-30 transition-all transform rotate-[-3deg]">
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border-2 ${s.badgeBg} ${s.badgeBorder} ${s.stampShadow}`}>
+                  <MapPin className={`w-3 h-3 ${s.badgeText}`} />
                   <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${s.badgeText} font-mono`}>
                     {currentCity}
                   </span>
@@ -237,31 +204,53 @@ export const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
 
-        {/* Bento Grid Content */}
-        <div className="p-4 space-y-3 overflow-y-auto no-scrollbar pb-32 mt-1">
-            <div className="grid grid-cols-2 gap-3">
-                <div className={`p-4 ${s.card} flex flex-col justify-between h-28`}>
-                    <div className="flex justify-between items-start">
-                        <Flame className="w-5 h-5 text-orange-500" />
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Efficiency</span>
-                    </div>
+        <div className="p-4 space-y-3 overflow-y-auto no-scrollbar pb-32 mt-2">
+            
+            <div className="grid grid-cols-3 gap-2">
+                <div className={`p-3 ${s.card} flex flex-col justify-between h-24`}>
+                    <Flame className="w-4 h-4 text-orange-500" />
                     <div>
-                        <span className="text-2xl font-black text-gray-900 dark:text-white">{stats.avgDaysToKnock}d</span>
-                        <p className="text-[9px] font-bold text-gray-500 uppercase">Avg. Dream Age</p>
+                        <span className="text-lg font-black text-gray-900 dark:text-white leading-none">{stats.avgDaysToKnock}d</span>
+                        <p className="text-[7px] font-black text-gray-500 uppercase leading-tight mt-0.5">Avg. Cycle</p>
                     </div>
                 </div>
 
-                <div className={`p-4 ${s.card} flex flex-col justify-between h-28`}>
-                    <div className="flex justify-between items-start">
-                        <Route className="w-5 h-5 text-blue-500" />
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Stop Mastery</span>
+                <div className={`p-3 ${s.card} flex flex-col justify-between h-24`}>
+                    <Route className="w-4 h-4 text-blue-500" />
+                    <div>
+                        <span className="text-lg font-black text-gray-900 dark:text-white leading-none">
+                            {stats.uniqueCities}
+                        </span>
+                        <p className="text-[7px] font-black text-gray-500 uppercase leading-tight mt-0.5">Cities Tagged</p>
+                    </div>
+                </div>
+
+                <div className={`p-3 ${s.card} flex flex-col justify-between h-24`}>
+                    <Timer className="w-4 h-4 text-purple-500" />
+                    <div>
+                        <span className="text-lg font-black text-gray-900 dark:text-white leading-none">{stats.totalCompleted}</span>
+                        <p className="text-[7px] font-black text-gray-500 uppercase leading-tight mt-0.5">Achievements</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Travel Distance Card - Dynamic Units */}
+            <div className={`p-5 ${s.card} flex items-center justify-between group overflow-hidden relative`}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50 dark:to-white/5 pointer-events-none" />
+                <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-gray-800 flex items-center justify-center border border-gray-100 dark:border-gray-700 shadow-sm">
+                        <Compass className={`w-6 h-6 ${s.accent}`} />
                     </div>
                     <div>
-                        <span className="text-2xl font-black text-gray-900 dark:text-white">
-                            {stats.totalStops > 0 ? Math.round((stats.completedStops / stats.totalStops) * 100) : 0}%
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Total Distance</h3>
+                        <span className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
+                            {formatDistance(stats.totalDistMeters, settings.distanceUnit)}
                         </span>
-                        <p className="text-[9px] font-bold text-gray-500 uppercase">Itinerary Completion</p>
                     </div>
+                </div>
+                <div className="relative z-10 text-right">
+                    <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-1">Peak Month</p>
+                    <span className="text-[10px] font-bold text-gray-900 dark:text-white uppercase px-2 py-1 bg-slate-100 dark:bg-gray-800 rounded-lg">{stats.peakMonth}</span>
                 </div>
             </div>
 
@@ -271,7 +260,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">Seasonal Balance</h3>
                         <SunMedium className={`w-3 h-3 ${s.accent}`} />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-4">
                         {[
                             { label: 'Spring', key: 'spring', icon: <Wind className="w-3 h-3 text-emerald-400" /> },
                             { label: 'Summer', key: 'summer', icon: <SunMedium className="w-3 h-3 text-orange-400" /> },
@@ -282,18 +271,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             const maxVal = Math.max(...(Object.values(stats.seasonalCounts) as number[]), 1);
                             const width = (count / maxVal) * 100;
                             return (
-                                <div key={key} className="space-y-1">
+                                <button key={key} onClick={() => onFilterAction?.({ season: label })} className="space-y-1 text-left group">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1.5">
                                             {icon}
-                                            <span className="text-[7px] font-black uppercase text-gray-400">{label}</span>
+                                            <span className="text-[8px] font-black uppercase text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white">{label}</span>
                                         </div>
                                         <span className="text-[8px] font-bold">{count}</span>
                                     </div>
                                     <div className={`h-1 w-full rounded-full ${s.progressTrack}`}>
-                                        <div className={`h-full rounded-full ${s.progressFill}`} style={{ width: `${width}%` }} />
+                                        <div className={`h-full rounded-full ${s.progressFill} transition-all duration-700`} style={{ width: `${width}%` }} />
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
@@ -301,98 +290,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className={`p-4 ${s.card}`}>
                     <div className="flex justify-between items-center mb-4 border-b border-gray-50 dark:border-gray-800 pb-2">
-                        <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">{stats.currentYear} Progress</h3>
-                        <BarChart className={`w-3 h-3 ${s.accent}`} />
+                        <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">Top Categories</h3>
+                        <PieChart className={`w-3 h-3 ${s.accent}`} />
                     </div>
-                    <div className="flex items-end justify-between h-16 gap-1 px-0.5">
-                        {stats.ytdMonthly.map((m, i) => {
-                            const max = Math.max(...stats.ytdMonthly.map(v => v.count), 1);
-                            const height = (m.count / max) * 100;
-                            return (
-                                <div key={i} className="flex flex-col items-center flex-1 gap-1">
-                                    <div className="w-full h-12 flex items-end relative">
-                                        <div 
-                                            className={`w-full rounded-t-sm transition-all duration-500 ${m.isCurrent ? s.chartBarActive : s.chartBar}`} 
-                                            style={{ height: `${Math.max(height, 5)}%` }}
-                                        />
-                                    </div>
-                                    <span className={`text-[6px] font-black ${m.isCurrent ? s.accent : 'text-gray-400'}`}>{m.label}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50 dark:border-gray-800">
-                        <span className="text-[8px] font-bold text-gray-500 uppercase tracking-tighter">YTD KNOCKS</span>
-                        <span className="text-xs font-black text-gray-900 dark:text-white">{stats.totalYtd}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className={`p-4 ${s.card} flex items-center justify-between group overflow-hidden relative active:scale-[0.99] transition-transform`}>
-                <div className="absolute top-0 right-0 w-24 h-full bg-gradient-to-l from-gray-50 dark:from-white/5 to-transparent pointer-events-none" />
-                <div className="flex items-center gap-3 relative z-10">
-                    <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-gray-800 flex items-center justify-center border border-gray-100 dark:border-gray-700 shadow-sm transition-transform group-hover:rotate-6">
-                        <Globe className={`w-5 h-5 ${s.accent}`} />
-                    </div>
-                    <div>
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Explorer Rank</span>
-                        <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tighter flex items-center gap-1.5">
-                            {stats.globalRank}
-                            <ArrowUpRight className="w-2.5 h-2.5 opacity-30" />
-                        </span>
-                    </div>
-                </div>
-                <div className="text-right relative z-10">
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Global Distance</span>
-                    <span className="text-xs font-black text-gray-900 dark:text-white font-mono">{formatDistance(stats.totalDist)}</span>
-                </div>
-            </div>
-
-            <div className={`p-4 ${s.card}`}>
-                <div className="flex justify-between items-center mb-4 border-b border-gray-50 dark:border-gray-800 pb-2">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400">Momentum Profile</h3>
-                    <Clock className="w-3 h-3 text-blue-500" />
-                </div>
-                <div className="flex items-center gap-8 py-1">
-                    <div className="flex-1 space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                                <Sun className="w-4 h-4 text-blue-500" />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-baseline mb-1">
-                                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Weekdays</span>
-                                    <span className="text-xs font-black">{stats.dayProfile.weekday}</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500" style={{ width: `${(stats.dayProfile.weekday / (stats.totalCompleted || 1)) * 100}%` }} />
-                                </div>
+                    <div className="flex flex-row items-center gap-6">
+                        {/* Interactive Doughnut Chart SVG */}
+                        <div className="relative w-24 h-24 shrink-0">
+                            <svg viewBox="0 0 33.8 33.8" className="w-full h-full transform -rotate-90 overflow-visible">
+                                {doughnutData.map((d, i) => (
+                                    <circle
+                                        key={d.cat}
+                                        cx="16.9"
+                                        cy="16.9"
+                                        r="15.9"
+                                        fill="transparent"
+                                        stroke={d.color}
+                                        strokeWidth="2.5"
+                                        strokeDasharray={`${d.percent} 100`}
+                                        strokeDashoffset={d.offset}
+                                        opacity={d.opacity}
+                                        className="transition-all duration-1000 ease-out"
+                                    />
+                                ))}
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[10px] font-black text-gray-900 dark:text-white leading-none">MIX</span>
+                                <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Top 4</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                                <Moon className="w-4 h-4 text-indigo-500" />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-baseline mb-1">
-                                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Weekends</span>
-                                    <span className="text-xs font-black">{stats.dayProfile.weekend}</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-indigo-500" style={{ width: `${(stats.dayProfile.weekend / (stats.totalCompleted || 1)) * 100}%` }} />
-                                </div>
-                            </div>
+
+                        {/* Legend with Filtering functionality */}
+                        <div className="flex-1 space-y-2">
+                            {doughnutData.map((d) => (
+                                <button 
+                                    key={d.cat} 
+                                    onClick={() => onFilterAction?.({ category: d.cat })}
+                                    className="flex items-center justify-between w-full group/item"
+                                >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <div 
+                                            className="w-2 h-2 rounded-full shrink-0 group-hover/item:scale-125 transition-transform" 
+                                            style={{ backgroundColor: d.color, opacity: d.opacity }} 
+                                        />
+                                        <span className="text-[8px] font-bold text-gray-500 uppercase truncate group-hover/item:text-gray-900 dark:group-hover/item:text-white">{d.cat}</span>
+                                    </div>
+                                    <span className="text-[8px] font-black text-gray-900 dark:text-white ml-2">{d.count}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="space-y-2.5 pt-1">
-                <div className="flex items-center justify-between px-1">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <HistoryIcon className="w-3 h-3 opacity-50" /> Logged Milestones
-                    </h3>
-                </div>
+                <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 px-1">
+                    <TrendingUp className="w-3 h-3 opacity-50" /> Logged Milestones
+                </h3>
                 <div className="grid grid-cols-1 gap-2">
                     {stats.recentAchievements.map((item, idx) => (
                         <button 
@@ -402,7 +355,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             style={{ animationDelay: `${idx * 100}ms` }}
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-gray-800 flex items-center justify-center shrink-0 border border-gray-100 dark:border-gray-700 group-hover:scale-105 transition-transform">
+                                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-gray-800 flex items-center justify-center shrink-0 border border-gray-100 dark:border-gray-700">
                                     <CategoryIcon category={item.category} className={`w-4 h-4 ${s.accent}`} />
                                 </div>
                                 <div className="text-left overflow-hidden">
@@ -419,17 +372,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 transition-all" />
                         </button>
                     ))}
+                    {stats.recentAchievements.length === 0 && (
+                        <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-900 rounded-xl">
+                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">No milestones yet</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="text-center py-8 opacity-20">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.4em]">Analytics Engine v2.3 • Just Knock It</p>
+            <div className="text-center py-8 opacity-10">
+                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.4em]">Analytics Pulse • Just Knock It</p>
             </div>
         </div>
     </div>
   );
 };
-
-const HistoryIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-);
