@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft, Zap } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
@@ -374,7 +375,7 @@ export default function App() {
                                 onClick={() => { setListFilter('completed'); triggerHaptic('light'); }}
                                 className={`relative z-10 flex-1 h-full flex items-center justify-start pl-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'completed' ? 'scale-[1.02]' : 'opacity-90'}`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${listFilter === 'completed' ? 'underline decoration-2 underline-offset-4' : ''}`}>
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-500 ${listFilter === 'completed' ? 'animate-fire-glow' : ''}`}>
                                     Knocked {stats.done} ({stats.percent}%)
                                 </span>
                             </button>
@@ -383,7 +384,7 @@ export default function App() {
                                 onClick={() => { setListFilter('active'); triggerHaptic('light'); }}
                                 className={`relative z-10 flex-1 h-full flex items-center justify-end pr-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'active' ? 'scale-[1.02]' : 'opacity-90'}`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${listFilter === 'active' ? 'underline decoration-2 underline-offset-4' : ''}`}>
+                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-500 ${listFilter === 'active' ? 'animate-fire-glow' : ''}`}>
                                     Dreaming {stats.pending}
                                 </span>
                             </button>

@@ -11,33 +11,39 @@ const itineraryItemSchema = {
     type: Type.OBJECT,
     properties: {
         name: { type: Type.STRING },
-        description: { type: Type.STRING },
+        description: { type: Type.STRING, description: "Detailed description. Include specific events like Monsoon or festivals here." },
         latitude: { type: Type.NUMBER },
         longitude: { type: Type.NUMBER },
         isImportant: { type: Type.BOOLEAN },
         imageKeyword: { type: Type.STRING },
         category: { type: Type.STRING },
         interests: { type: Type.ARRAY, items: { type: Type.STRING } },
-        bestVisitingTime: { type: Type.STRING }
+        bestVisitingTime: { 
+          type: Type.STRING, 
+          description: "Strictly a short month range like 'Jun-Jul' or 'Oct-Nov'. No descriptive text." 
+        }
     },
-    required: ["name", "description"]
+    required: ["name", "description", "bestVisitingTime"]
 };
 
 const bucketItemSchema = {
   type: Type.OBJECT,
   properties: {
     title: { type: Type.STRING },
-    description: { type: Type.STRING },
+    description: { type: Type.STRING, description: "Concise description. Move weather/seasonal details like 'Monsoon' or 'Cherry Blossom' here." },
     locationName: { type: Type.STRING },
     latitude: { type: Type.NUMBER },
     longitude: { type: Type.NUMBER },
     imageKeyword: { type: Type.STRING },
     category: { type: Type.STRING },
     interests: { type: Type.ARRAY, items: { type: Type.STRING } },
-    bestTimeToVisit: { type: Type.STRING },
+    bestTimeToVisit: { 
+      type: Type.STRING, 
+      description: "Strictly a short month range like 'Jun-Jul' or 'Apr-May'. No other words." 
+    },
     itinerary: { type: Type.ARRAY, items: itineraryItemSchema }
   },
-  required: ["title", "description", "category"]
+  required: ["title", "description", "category", "bestTimeToVisit"]
 };
 
 const generateImageUrls = (keyword: string): string[] => {
@@ -52,9 +58,10 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
     const prompt = `Analyze this dream: "${input}".
     1. Select the absolute best category from this list: ${availableCategories.join(', ')}.
     2. Generate 3-5 relevant interests (short tags).
-    3. Provide a concise description.
-    4. If it's a location, provide GPS coordinates and a full itinerary of 8-12 local spots.
-    5. Be extremely fast and concise.`;
+    3. Provide a concise description. If there's specific seasonal info like monsoon or festivals, include it ONLY here.
+    4. For 'bestTimeToVisit', use ONLY a simple range like 'Jun-Jul'. Do NOT include words like 'Monsoon' or 'Season' in this field.
+    5. If it's a location, provide GPS coordinates and a full itinerary of 8-12 local spots.
+    6. Be extremely fast and concise.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -78,7 +85,7 @@ export const analyzeBucketItem = async (input: string, availableCategories: stri
       images: data.imageKeyword ? generateImageUrls(data.imageKeyword) : generateImageUrls(data.title || input),
       category: data.category || availableCategories[0],
       interests: data.interests || [],
-      bestTimeToVisit: data.bestTimeToVisit || 'Anytime',
+      bestTimeToVisit: data.bestTimeToVisit || 'Jan-Dec',
       itinerary: (data.itinerary || []).map((item: any) => ({
           name: item.name,
           description: item.description,
@@ -104,6 +111,7 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
         const prompt = `Suggest a specific, iconic bucket list experience. 
         ${context ? `Use the user's input "${context}" as a context seed for the suggestion.` : 'Pick something random and world-famous.'}
         Select a category from: ${availableCategories.join(', ')}.
+        Strictly use 'MMM-MMM' format for bestTimeToVisit. Move all seasonal descriptions into the description field.
         Be fast. Return JSON.`;
 
         const response = await ai.models.generateContent({
@@ -127,7 +135,7 @@ export const suggestBucketItem = async (availableCategories: string[], context?:
             images: data.imageKeyword ? generateImageUrls(data.imageKeyword) : generateImageUrls(data.title),
             category: data.category || availableCategories[0],
             interests: data.interests || [],
-            bestTimeToVisit: data.bestTimeToVisit || 'Anytime',
+            bestTimeToVisit: data.bestTimeToVisit || 'Jan-Dec',
             itinerary: (data.itinerary || []).map((item: any) => ({
                 name: item.name,
                 description: item.description,
@@ -234,7 +242,7 @@ export const getPlaceDetails = async (placeName: string, context?: string): Prom
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Provide full details for: "${placeName}". ${context ? `Context: ${context}` : ''}`,
+      contents: `Provide full details for: "${placeName}". ${context ? `Context: ${context}` : ''}. Strictly use 'MMM-MMM' for bestVisitingTime.`,
       config: { responseMimeType: "application/json", responseSchema: itineraryItemSchema }
     });
     const data = JSON.parse(response.text || "{}");
@@ -259,7 +267,7 @@ export const generateItineraryForLocation = async (location: string): Promise<It
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Suggest 10 specific local spots for "${location}".`,
+      contents: `Suggest 10 specific local spots for "${location}". Strictly use 'MMM-MMM' format for bestVisitingTime.`,
       config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
     const data = JSON.parse(response.text || "[]");
@@ -283,7 +291,7 @@ export const generateRoadTripStops = async (start: string, end: string): Promise
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Suggest 5 scenic stops between "${start}" and "${end}".`,
+      contents: `Suggest 5 scenic stops between "${start}" and "${end}". Strictly use 'MMM-MMM' format for bestVisitingTime.`,
       config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: itineraryItemSchema } }
     });
     const data = JSON.parse(response.text || "[]");
