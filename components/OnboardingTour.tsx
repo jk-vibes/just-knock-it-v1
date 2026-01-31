@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { ChevronRight, Check, X, Sparkles, Map, LayoutList } from 'lucide-react';
 
@@ -22,12 +21,6 @@ const STEPS: Step[] = [
     title: "Dream It & Magic Fill",
     description: "Tap here to add a wish. Just type something like 'See the Northern Lights' and our AI will automatically find the best location, photos, and time to visit.",
     position: 'center' // Force center position for max visibility on mobile
-  },
-  {
-    target: '[data-tour="radar-btn"]',
-    title: "Never Miss a Moment",
-    description: "Toggle the Radar on. We'll notify you when you're nearby one of your bucket list items, so you never miss an opportunity.",
-    position: 'bottom'
   },
   {
     target: '[data-tour="view-toggle"]',

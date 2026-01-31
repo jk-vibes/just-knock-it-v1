@@ -3,7 +3,6 @@ import {
   Trophy, 
   Activity, 
   Flame, 
-  MapPin, 
   Zap, 
   SunMedium, 
   Route, 
@@ -70,7 +69,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }, {} as Record<string, number>);
 
     const topCategories = Object.entries(categoryCounts)
-        // Fix: Use Number() to ensure numeric subtraction for sort on line 73
         .sort((a, b) => Number(b[1]) - Number(a[1]))
         .slice(0, 4);
 
@@ -86,7 +84,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const completionTimes = completed
         .filter(i => i.completedAt !== undefined && i.createdAt !== undefined)
-        /* Fix: Use explicit type casting to ensure number type for subtraction */
         .map(i => ((i.completedAt as number) - (i.createdAt as number)) / (1000 * 60 * 60 * 24));
     const avgDaysToKnock = completionTimes.length > 0 
         ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length)
@@ -148,7 +145,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const completionRate = stats.totalItems > 0 ? (stats.totalCompleted / stats.totalItems) * 100 : 0;
 
-  // Doughnut Chart Logic - Circumference of 100 units (R=15.9)
   const doughnutData = useMemo(() => {
     const total = stats.topCategories.reduce((acc, [_, count]) => acc + count, 0);
     let cumulative = 0;
@@ -161,7 +157,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             cat, 
             count, 
             percent, 
-            offset: 100 - currentCumulative, // Standard clockwise SVG dashoffset
+            offset: 100 - currentCumulative,
             color: s.accentHex,
             opacity: opacities[i % opacities.length]
         };
@@ -196,7 +192,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {currentCity && (
             <div className="absolute -bottom-2 right-8 z-30 transition-all transform rotate-[-3deg]">
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border-2 ${s.badgeBg} ${s.badgeBorder} ${s.stampShadow}`}>
-                  <MapPin className={`w-3 h-3 ${s.badgeText}`} />
                   <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${s.badgeText} font-mono`}>
                     {currentCity}
                   </span>
@@ -235,7 +230,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* Travel Distance Card - Dynamic Units */}
             <div className={`p-5 ${s.card} flex items-center justify-between group overflow-hidden relative`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50 dark:to-white/5 pointer-events-none" />
                 <div className="flex items-center gap-4 relative z-10">
@@ -295,7 +289,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <PieChart className={`w-3 h-3 ${s.accent}`} />
                     </div>
                     <div className="flex flex-row items-center gap-6">
-                        {/* Interactive Doughnut Chart SVG */}
                         <div className="relative w-24 h-24 shrink-0">
                             <svg viewBox="0 0 33.8 33.8" className="w-full h-full transform -rotate-90 overflow-visible">
                                 {doughnutData.map((d, i) => (
@@ -320,7 +313,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
-                        {/* Legend with Filtering functionality */}
                         <div className="flex-1 space-y-2">
                             {doughnutData.map((d) => (
                                 <button 

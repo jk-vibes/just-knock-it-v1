@@ -3,7 +3,7 @@ import {
   X, Moon, Sun, Trash2, Plus, Cloud, Upload, Download, Loader2, 
   Eraser, BellRing, Mic, Tag, Users, FileDown, FileSpreadsheet, 
   Clock, Star, Car, Footprints, Bike, Bus, Database, LogOut, 
-  PlayCircle, Radar, ListFilter, Hash, CheckCircle2, Ruler
+  PlayCircle, ListFilter, Hash, CheckCircle2, Ruler
 } from 'lucide-react';
 import { Theme, TravelMode, AppSettings, BucketItem, DistanceUnit } from '../types';
 import { driveService } from '../services/driveService';
@@ -153,7 +153,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 if (confirm(`Found ${importedItems.length} dreams. Import them now? This will replace your current list.`)) {
                     onRestore(importedItems);
                     triggerHaptic('success');
-                    // Reset input so change triggers again for same file if needed
                     e.target.value = '';
                 }
             } else if (importedItems.length === 0) {
@@ -195,7 +194,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#1a1b1e] text-white rounded-3xl w-full max-w-sm h-[620px] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-gray-800">
         
-        {/* Hidden inputs safely positioned */}
         <div className="fixed -top-96 -left-96 opacity-0 pointer-events-none">
             <input 
               type="file" 
@@ -270,12 +268,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
                     <div className="flex items-center gap-2 text-[9px] text-gray-500 font-bold uppercase tracking-widest">
-                        <Radar className="w-3 h-3" />
                         Alert distance for nearby dreams
                     </div>
                 </div>
 
-                {/* Distance Unit Preference */}
                 <div className="space-y-3 pt-4 border-t border-gray-800">
                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Distance Unit</h3>
                     <div className="grid grid-cols-2 gap-3">

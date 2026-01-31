@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft, Radar, Zap } from 'lucide-react';
+import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft, Zap } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { BucketListCard } from './components/BucketListCard';
@@ -24,7 +24,7 @@ import { triggerHaptic } from './utils/haptics';
 import { generateSmartNotification, reverseGeocode } from './services/geminiService';
 import { toast } from './utils/toast';
 
-const APP_VERSION = 'v1.9.1';
+const APP_VERSION = 'v1.9';
 
 const DEFAULT_CATEGORIES = ['Adventure', 'Travel', 'Food', 'Culture', 'Nature', 'Luxury', 'Personal Growth'];
 const DEFAULT_INTERESTS = ['History', 'Art', 'Architecture', 'Hiking', 'Music', 'Photography', 'Shopping', 'Relaxation'];
@@ -353,14 +353,6 @@ export default function App() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
-                        data-tour="radar-btn"
-                        onClick={() => { setIsRadarEnabled(!isRadarEnabled); toast.info(`Radar ${!isRadarEnabled ? 'Enabled' : 'Disabled'}`); triggerHaptic('medium'); }} 
-                        className={`${themeStyles.headerBtn} ${isRadarEnabled ? 'bg-red-500/20 text-red-500 border-red-500/30' : 'opacity-40'}`}
-                        title="Toggle Proximity Radar"
-                    >
-                        <Radar className={`w-5 h-5 ${isRadarEnabled ? 'animate-pulse' : ''}`} />
-                    </button>
                     <button onClick={() => { setActiveTab(isDashboardTab ? 'list' : 'stats'); triggerHaptic('light'); }} className={themeStyles.headerBtn}>{isDashboardTab ? <List className="w-5 h-5" /> : <BarChart3 className="w-5 h-5" />}</button>
                     <button onClick={() => setIsNotificationsOpen(true)} className={`${themeStyles.headerBtn} relative`}><Bell className="w-5 h-5" />{notifications.filter(n => !n.read).length > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white px-1">{notifications.filter(n => !n.read).length}</span>}</button>
                     <div className="relative">
