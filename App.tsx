@@ -115,7 +115,8 @@ export default function App() {
             type: notifType 
         }, ...prev]);
 
-        toast.info(smartData.message, 0, "Smart Notifier");
+        // Explicitly set to 15 seconds for AI messages
+        toast.info(smartData.message, 15000, "Smart Notifier");
 
         if (settings.notificationsEnabled) {
             sendNotification(smartData.title, smartData.message, 'jk-smart');

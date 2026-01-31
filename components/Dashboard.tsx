@@ -70,7 +70,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }, {} as Record<string, number>);
 
     const topCategories = Object.entries(categoryCounts)
-        .sort((a, b) => b[1] - a[1])
+        // Fix: Use Number() to ensure numeric subtraction for sort on line 73
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
         .slice(0, 4);
 
     const seasonalCounts = completed.reduce((acc, item) => {
