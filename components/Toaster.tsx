@@ -44,6 +44,17 @@ const ToastItem: React.FC<ToastItemProps> = ({ t, theme, onRemove }) => {
 
   const getThemeStyles = () => {
     switch (theme) {
+      case 'moon':
+        return {
+          gradient: 'from-gray-900 to-black',
+          border: 'border-white/10',
+          accent: 'text-white',
+          progressBar: 'bg-white',
+          iconContainer: 'bg-white/10',
+          text: 'text-white',
+          title: 'text-gray-400',
+          header: 'bg-white/5 border-white/5'
+        };
       case 'batman':
         return {
           gradient: 'from-[#EAB308]/80 to-[#111827]/90',
@@ -136,15 +147,15 @@ export const Toaster: React.FC<ToasterProps> = ({ theme }) => {
   const [toasts, setToasts] = useState<ToastOptions[]>([]);
 
   useEffect(() => {
-    return toast.subscribe((newToast) => {
+    const unsubscribe = toast.subscribe((newToast) => {
       setToasts((prev) => [...prev, newToast]);
-      
-      if (newToast.duration !== 0) {
+      if (newToast.duration && newToast.duration !== 0) {
         setTimeout(() => {
           removeToast(newToast.id);
-        }, newToast.duration || 3000);
+        }, newToast.duration);
       }
     });
+    return () => unsubscribe();
   }, []);
 
   const removeToast = (id: string) => {
@@ -152,12 +163,7 @@ export const Toaster: React.FC<ToasterProps> = ({ theme }) => {
   };
 
   return (
-    <div className="fixed bottom-8 left-4 z-[200] flex flex-col items-start pointer-events-none pr-6 max-w-full">
-      <style>{`
-        .capitalize-first::first-letter {
-            text-transform: uppercase;
-        }
-      `}</style>
+    <div className="fixed bottom-24 left-6 z-[100] flex flex-col items-start pointer-events-none">
       {toasts.map((t) => (
         <ToastItem key={t.id} t={t} theme={theme} onRemove={removeToast} />
       ))}

@@ -1,3 +1,4 @@
+
 export interface Coordinates {
   latitude: number;
   longitude: number;
@@ -74,7 +75,7 @@ export interface AppNotification {
   relatedItemId?: string;
 }
 
-export type Theme = 'marvel' | 'batman' | 'elsa';
+export type Theme = 'marvel' | 'batman' | 'elsa' | 'moon';
 export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';
 export type DistanceUnit = 'km' | 'mi';
 

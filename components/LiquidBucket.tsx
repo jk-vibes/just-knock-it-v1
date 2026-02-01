@@ -9,19 +9,21 @@ interface LiquidBucketProps {
 }
 
 export const LiquidBucket: React.FC<LiquidBucketProps> = ({ theme, isFab = false, percent = 50, label = "" }) => {
+    // Standardizing liquid and text colors across all themes for consistent "JK" branding
     const themes = {
-        marvel: { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#1e3a8a", text: "#1e3a8a" },
-        batman: { liquid: "#EAB308", bg: "#111827", stroke: "#374151", text: "#FFFFFF" },
-        elsa: { liquid: "#F97316", bg: isFab ? "#F0F9FF" : "transparent", stroke: "#0891B2", text: "#0E7490" },
-        'brand-red': { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#EF4444", text: "#EF4444" }
+        moon: { liquid: "#EF4444", bg: isFab ? "#000000" : "transparent", stroke: "#333333", text: "#FFFFFF" },
+        marvel: { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#1e3a8a", text: "#FFFFFF" },
+        batman: { liquid: "#EF4444", bg: "#111827", stroke: "#374151", text: "#FFFFFF" },
+        elsa: { liquid: "#EF4444", bg: isFab ? "#F0F9FF" : "transparent", stroke: "#0891B2", text: "#FFFFFF" },
+        'brand-red': { liquid: "#EF4444", bg: isFab ? "#FFFFFF" : "transparent", stroke: "#EF4444", text: "#FFFFFF" }
     };
+    
     const activeKey = (themes[theme as keyof typeof themes] ? theme : 'marvel') as keyof typeof themes;
     const style = themes[activeKey];
     const fillP = Math.min(100, Math.max(0, percent));
     const liquidHeight = (fillP / 100) * 320; 
     const liquidTopY = 480 - liquidHeight;
     const uniqueId = `mask-${isFab ? 'fab' : 'head'}-${activeKey}-${Math.random().toString(36).substr(2, 5)}`;
-    const textFill = "#FFFFFF";
 
     return (
         <svg viewBox="0 0 512 512" className={`w-full h-full transition-all duration-700 ease-in-out ${isFab ? 'drop-shadow-lg' : ''}`} xmlns="http://www.w3.org/2000/svg">
@@ -41,7 +43,7 @@ export const LiquidBucket: React.FC<LiquidBucketProps> = ({ theme, isFab = false
                     fontFamily="Arial Black, Arial, sans-serif" 
                     fontWeight="900" 
                     fontSize={label === "?" ? "240" : "140"} 
-                    fill={textFill} 
+                    fill={style.text} 
                     textAnchor="middle"
                     className="transition-all duration-500 select-none"
                     style={{ filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.5))' }}

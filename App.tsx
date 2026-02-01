@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft, Zap } from 'lucide-react';
+import { Plus, Map as MapIcon, Settings, Bell, LayoutList, Users, ArrowUpDown, List, Search, X, ListChecks, BarChart3, Sparkles, AlignLeft, Zap, Moon as MoonIcon } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, User, AppNotification, BucketItemDraft, ActiveTab, TravelMode, AppSettings } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { BucketListCard } from './components/BucketListCard';
@@ -32,7 +31,7 @@ const DEFAULT_INTERESTS = ['History', 'Art', 'Architecture', 'Hiking', 'Music', 
 
 const getInitials = (name: string) => name.substring(0, 1).toUpperCase();
 const getAvatarColor = (name: string) => {
-    const colors = ['bg-blue-600', 'bg-purple-600', 'bg-pink-600', 'bg-indigo-600', 'bg-teal-600', 'bg-orange-600'];
+    const colors = ['bg-zinc-600', 'bg-zinc-700', 'bg-zinc-800', 'bg-zinc-900'];
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return colors[Math.abs(hash) % colors.length];
@@ -65,7 +64,7 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
-    theme: 'marvel',
+    theme: 'moon',
     proximityRange: 2000,
     travelMode: 'driving',
     distanceUnit: 'km',
@@ -116,7 +115,6 @@ export default function App() {
             type: notifType 
         }, ...prev]);
 
-        // Explicitly set to 15 seconds for AI messages
         toast.info(smartData.message, 15000, "Smart Notifier");
 
         if (settings.notificationsEnabled) {
@@ -158,7 +156,7 @@ export default function App() {
       localStorage.setItem('jk_interests', JSON.stringify(interests));
       localStorage.setItem('jk_settings', JSON.stringify(settings));
       document.body.setAttribute('data-theme', settings.theme);
-      if (settings.theme === 'batman') document.documentElement.classList.add('dark');
+      if (settings.theme === 'batman' || settings.theme === 'moon') document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
   }, [items, familyMembers, categories, interests, settings]);
 
@@ -201,6 +199,7 @@ export default function App() {
 
   const themeStyles = useMemo(() => {
       switch (settings.theme) {
+          case 'moon': return { headerWrapper: 'bg-[#09090b]/90 backdrop-blur-md', topRowBg: 'bg-[#09090b]', topRowText: 'text-white', topRowBorder: 'border-b border-white/5', progressRowBg: 'bg-[#09090b]', toolbarBg: 'bg-[#09090b]/30 backdrop-blur-sm', toolbarBorder: 'border-white/5', toolbarText: 'text-zinc-300', toolbarHover: 'hover:bg-white/5', toolbarActive: 'bg-zinc-800', progressFillColor: '#EF4444', progressTrackColor: '#18181b', iconSecondary: 'text-zinc-400', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-xl overflow-hidden border border-white/10 hover:border-white shadow-md', fabIcon: 'text-black', fabBorder: 'border-white/10', accentText: 'text-white', activeBg: 'bg-white', activeText: 'text-black', chipBg: 'bg-zinc-800', chipText: 'text-white', chipInactive: 'bg-zinc-900/50 text-gray-500', chipInterest: 'bg-zinc-700 text-zinc-200' };
           case 'marvel': return { headerWrapper: 'bg-white', topRowBg: 'bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950', topRowText: 'text-white', topRowBorder: 'border-b-2 border-red-600', progressRowBg: 'bg-white', toolbarBg: 'bg-white', toolbarBorder: 'border-slate-200', toolbarText: 'text-slate-600', toolbarHover: 'hover:bg-slate-100', toolbarActive: 'bg-slate-100', progressFillColor: '#EF4444', progressTrackColor: '#1E3A8A', iconSecondary: 'text-red-500', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white shadow-sm', fabIcon: 'text-red-500', fabBorder: 'border-blue-900', accentText: 'text-red-600', activeBg: 'bg-red-600', activeText: 'text-white', chipBg: 'bg-red-600', chipText: 'text-white', chipInactive: 'bg-slate-100 text-slate-500', chipInterest: 'bg-indigo-600 text-white' };
           case 'elsa': return { headerWrapper: 'bg-cyan-50', topRowBg: 'bg-gradient-to-r from-sky-50 via-white to-cyan-50', topRowText: 'text-cyan-900', topRowBorder: 'border-b-2 border-orange-400', progressRowBg: 'bg-[#f0f9ff]', toolbarBg: 'bg-[#f0f9ff]', toolbarBorder: 'border-cyan-200', toolbarText: 'text-cyan-900', toolbarHover: 'hover:bg-cyan-100', toolbarActive: 'bg-cyan-100', progressFillColor: '#F97316', progressTrackColor: '#0891B2', iconSecondary: 'text-cyan-600', headerBtn: 'w-10 h-10 flex items-center justify-center rounded-full border border-orange-300 bg-white/40 text-cyan-800 hover:bg-white/60', headerProfileBtn: 'w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 shadow-sm', fabIcon: 'text-orange-500', fabBorder: 'border-cyan-600', accentText: 'text-orange-500', activeBg: 'bg-orange-500', activeText: 'text-white', chipBg: 'bg-orange-500', chipText: 'text-white', chipInactive: 'bg-cyan-100/50 text-cyan-600', chipInterest: 'bg-sky-600 text-white' };
           case 'batman':
@@ -337,6 +336,16 @@ export default function App() {
   const isAnyFilterActive = searchKeywords.length > 0 || activeCategories.length > 0 || activeInterests.length > 0 || filterYear !== null || filterMonth !== null || filterSeason !== null;
   const isDashboardTab = activeTab === 'stats';
 
+  const StatusLabel = ({ label, count, percent, isActive }: { label: string, count: number, percent?: number, isActive: boolean }) => {
+      return (
+          <div className="flex items-center justify-center transition-all duration-300">
+              <span className={`text-[10px] font-black uppercase tracking-widest leading-none whitespace-nowrap text-white transition-all duration-300 ${isActive ? 'opacity-100 scale-105' : 'opacity-40'} drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]`}>
+                  {label} {count}{percent !== undefined ? ` (${percent}%)` : ''}
+              </span>
+          </div>
+      );
+  };
+
   if (!user) return <LoginScreen onLogin={(u) => setUser(u)} />;
 
   return (
@@ -346,7 +355,9 @@ export default function App() {
             <div className={`flex items-center justify-between px-2 pt-2 pb-2 ${themeStyles.topRowBg} ${themeStyles.topRowText} ${themeStyles.topRowBorder}`}>
                 <div className="flex flex-col cursor-pointer active:opacity-70 transition-opacity" onClick={() => setIsChangelogOpen(true)}>
                     <div className="flex items-center gap-1 h-10">
-                        <div className="w-10 h-10 shrink-0"><LiquidBucket theme="brand-red" percent={75} label="JK" /></div>
+                        <div className="w-10 h-10 shrink-0">
+                           <LiquidBucket theme={settings.theme} percent={75} label="JK" />
+                        </div>
                         <span className="px-2 py-0.5 rounded-full text-[8px] font-black tracking-tighter bg-gray-800/80 text-white backdrop-blur-sm border border-white/5">{APP_VERSION}</span>
                     </div>
                     <div className="pl-1 mt-0.5">
@@ -356,9 +367,10 @@ export default function App() {
                 <div className="flex items-center gap-2">
                     <button onClick={() => { setActiveTab(isDashboardTab ? 'list' : 'stats'); triggerHaptic('light'); }} className={themeStyles.headerBtn}>{isDashboardTab ? <List className="w-5 h-5" /> : <BarChart3 className="w-5 h-5" />}</button>
                     <button onClick={() => setIsNotificationsOpen(true)} className={`${themeStyles.headerBtn} relative`}><Bell className="w-5 h-5" />{notifications.filter(n => !n.read).length > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white px-1">{notifications.filter(n => !n.read).length}</span>}</button>
+                    <button onClick={() => { setIsSettingsOpen(true); triggerHaptic('light'); }} className={themeStyles.headerBtn}><Settings className="w-5 h-5" /></button>
                     <div className="relative">
                         <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className={themeStyles.headerProfileBtn}><img src={user.photoUrl || "https://ui-avatars.com/api/?name=User"} className="w-full h-full object-cover" alt="Profile" /></button>
-                        {isProfileMenuOpen && <ProfileMenu user={user} theme={settings.theme} onLogout={handleLogout} onClose={() => setIsProfileMenuOpen(false)} onOpenSettings={() => setIsSettingsOpen(true)} />}
+                        {isProfileMenuOpen && <ProfileMenu user={user} theme={settings.theme} onLogout={handleLogout} onClose={() => setIsProfileMenuOpen(false)} />}
                     </div>
                 </div>
             </div>
@@ -366,27 +378,23 @@ export default function App() {
                 <>
                     <div className={`px-2 pt-2 pb-1.5 ${themeStyles.progressRowBg}`}>
                         <div 
-                            className={`relative h-9 w-full rounded-2xl overflow-hidden border shadow-inner flex items-center transition-all duration-500 ${settings.theme === 'batman' ? 'border-gray-700' : 'border-gray-200'}`}
+                            className={`relative h-11 w-full rounded-2xl overflow-hidden border shadow-inner flex items-center transition-all duration-500 ${settings.theme === 'batman' || settings.theme === 'moon' ? 'border-white/10' : 'border-gray-200'}`}
                             style={{
                                 background: `linear-gradient(to right, ${themeStyles.progressFillColor} 0%, ${themeStyles.progressFillColor} ${stats.percent}%, ${themeStyles.progressTrackColor} ${Math.max(0, stats.percent - 2)}%, ${themeStyles.progressTrackColor} 100%)`
                             }}
                         >
                             <button 
                                 onClick={() => { setListFilter('completed'); triggerHaptic('light'); }}
-                                className={`relative z-10 flex-1 h-full flex items-center justify-start pl-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'completed' ? 'scale-[1.02]' : 'opacity-90'}`}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-start pl-6 transition-all duration-300 outline-none active:bg-white/10`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-500 ${listFilter === 'completed' ? 'animate-fire-glow' : ''}`}>
-                                    Knocked {stats.done} ({stats.percent}%)
-                                </span>
+                                <StatusLabel label="Knocked" count={stats.done} percent={stats.percent} isActive={listFilter === 'completed'} />
                             </button>
 
                             <button 
                                 onClick={() => { setListFilter('active'); triggerHaptic('light'); }}
-                                className={`relative z-10 flex-1 h-full flex items-center justify-end pr-4 transition-all duration-300 outline-none focus:bg-white/10 active:bg-white/20 ${listFilter === 'active' ? 'scale-[1.02]' : 'opacity-90'}`}
+                                className={`relative z-10 flex-1 h-full flex items-center justify-end pr-6 transition-all duration-300 outline-none active:bg-white/10`}
                             >
-                                <span className={`text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-500 ${listFilter === 'active' ? 'animate-fire-glow' : ''}`}>
-                                    Dreaming {stats.pending}
-                                </span>
+                                <StatusLabel label="Dreaming" count={stats.pending} isActive={listFilter === 'active'} />
                             </button>
                         </div>
 
@@ -428,7 +436,7 @@ export default function App() {
                                         <span>Cat: {cat}</span>
                                         <X className="w-2.5 h-2.5" />
                                     </button>
-                                ))}
+                                )}
                                 {activeInterests.map(interest => (
                                     <button 
                                         key={interest}
@@ -438,7 +446,7 @@ export default function App() {
                                         <span>#{interest}</span>
                                         <X className="w-2.5 h-2.5" />
                                     </button>
-                                ))}
+                                )}
                                 {searchKeywords.map((word, i) => (
                                     <button 
                                         key={`search-${i}`} 
@@ -465,8 +473,8 @@ export default function App() {
                                 
                                 {isSearchOpen && (
                                      <div className={`absolute top-full left-0 mt-1 z-[100] w-64 animate-in zoom-in-95 slide-in-from-top-1 duration-200`}>
-                                        <div className={`p-2 rounded-2xl shadow-2xl border flex flex-col gap-3 ${settings.theme === 'batman' ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-200'}`}>
-                                            <div className="flex items-center bg-slate-50 dark:bg-gray-900 rounded-xl px-2">
+                                        <div className={`p-2 rounded-2xl shadow-2xl border flex flex-col gap-3 ${settings.theme === 'batman' || settings.theme === 'moon' ? 'bg-[#18181b] border-white/10' : 'bg-white border-slate-200'}`}>
+                                            <div className="flex items-center bg-slate-50 dark:bg-zinc-900 rounded-xl px-2">
                                                 <input 
                                                     autoFocus
                                                     ref={searchInputRef}
@@ -479,7 +487,7 @@ export default function App() {
                                                         }
                                                     }}
                                                     placeholder="Type & Enter to add..."
-                                                    className={`flex-1 pl-1 pr-2 py-2 outline-none text-xs bg-transparent ${settings.theme === 'batman' ? 'text-white placeholder:text-gray-600' : 'text-slate-900 placeholder:text-slate-400'}`}
+                                                    className={`flex-1 pl-1 pr-2 py-2 outline-none text-xs bg-transparent ${settings.theme === 'batman' || settings.theme === 'moon' ? 'text-white placeholder:text-zinc-600' : 'text-slate-900 placeholder:text-slate-400'}`}
                                                 />
                                                 {searchInputValue && (
                                                     <button onClick={() => setSearchInputValue('')} className="p-1.5 text-gray-400 hover:text-gray-600">
@@ -493,7 +501,7 @@ export default function App() {
                                                 <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
                                                     <button 
                                                         onClick={() => { setActiveCategories([]); triggerHaptic('light'); }}
-                                                        className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.length === 0 ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                        className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.length === 0 ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-zinc-700 text-gray-500'}`}
                                                     >
                                                         Clear
                                                     </button>
@@ -504,7 +512,7 @@ export default function App() {
                                                                 setActiveCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
                                                                 triggerHaptic('light'); 
                                                             }}
-                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.includes(cat) ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeCategories.includes(cat) ? `${themeStyles.activeBg} ${themeStyles.activeText}` : 'bg-slate-100 dark:bg-zinc-700 text-gray-500'}`}
                                                         >
                                                             {cat}
                                                         </button>
@@ -522,7 +530,7 @@ export default function App() {
                                                                 setActiveInterests(prev => prev.includes(int) ? prev.filter(i => i !== int) : [...prev, int]);
                                                                 triggerHaptic('light');
                                                             }}
-                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeInterests.includes(int) ? `bg-indigo-600 text-white` : 'bg-slate-100 dark:bg-gray-700 text-gray-500'}`}
+                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all whitespace-nowrap ${activeInterests.includes(int) ? `bg-indigo-600 text-white` : 'bg-slate-100 dark:bg-zinc-700 text-gray-500'}`}
                                                         >
                                                             #{int}
                                                         </button>
@@ -532,7 +540,7 @@ export default function App() {
 
                                             <button 
                                                 onClick={() => setIsSearchOpen(false)}
-                                                className="w-full py-2 bg-gray-50 dark:bg-gray-700 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
+                                                className="w-full py-2 bg-gray-50 dark:bg-zinc-700 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
                                             >
                                                 Finish Search
                                             </button>
@@ -561,15 +569,15 @@ export default function App() {
             ) : isDashboardTab ? (
                  <Dashboard onBack={() => setActiveTab('list')} items={items} theme={settings.theme} aiInsight={latestAiInsight} onNavigateToItem={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} currentCity={currentCity} onSuggestItem={handleSuggestItem} onFilterAction={handleDashboardFilter} settings={settings} />
             ) : activeTab === 'list' ? (
-                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-1.5">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} /></div><h3 className="text-xl font-black text-gray-400">Your bucket is empty</h3></div> : displayItems.map((item) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={handleDeleteItem} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={(term) => handleKeywordAdd(term)} travelMode={settings.travelMode} distanceUnit={settings.distanceUnit} />)}</div>
-            ) : <div className="h-[75vh] rounded-3xl overflow-hidden shadow-xl relative animate-in fade-in duration-700"><MapView items={displayItems} userLocation={userLocation} proximityRange={settings.proximityRange} onMarkerClick={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} distanceUnit={settings.distanceUnit} /></div>}
+                listFilter === 'completed' ? <TimelineView items={displayItems} onEdit={(i) => { setEditingItem(i); setIsAddModalOpen(true); }} pendingCount={stats.pending} onViewPending={() => setListFilter('active')} highlightedId={highlightedItemId} /> : <div className="space-y-1.5">{displayItems.length === 0 ? <div className="flex flex-col items-center justify-center py-16 opacity-80"><div className="w-40 h-40 mb-4 animate-float"><LiquidBucket theme={settings.theme} percent={15} label="JK" /></div><h3 className="text-xl font-black text-zinc-400">Your bucket is empty</h3></div> : displayItems.map((item) => <BucketListCard key={item.id} item={item} userLocation={userLocation} onToggleComplete={() => setCompletingItemId(item.id)} onDelete={handleDeleteItem} onEdit={() => { setEditingItem(item); setIsAddModalOpen(true); }} onViewImages={() => setGalleryItem(item)} onPlanTrip={setPlannerItem} theme={settings.theme} isCompact={isCompact} isHighlighted={highlightedItemId === item.id} onSearch={(term) => handleKeywordAdd(term)} travelMode={settings.travelMode} distanceUnit={settings.distanceUnit} />)}</div>
+            ) : <div className="h-[75vh] rounded-3xl overflow-hidden shadow-xl relative animate-in fade-in duration-700"><MapView displayItems={displayItems} userLocation={userLocation} proximityRange={settings.proximityRange} onMarkerClick={(id) => { setActiveTab('list'); setHighlightedItemId(id); }} distanceUnit={settings.distanceUnit} /></div>}
         </main>
         {!plannerItem && (
             <>
                 {isDashboardTab ? (
-                    <button onClick={() => setIsChatOpen(true)} className="fixed bottom-8 right-6 z-40 w-24 h-24 hover:scale-110 active:scale-90 group"><div className="animate-float"><LiquidBucket theme={settings.theme} isFab={true} percent={65} label="?" /><div className={`absolute top-0 right-0 bg-white rounded-full p-2 shadow-md border-2 ${themeStyles.fabBorder}`}><Sparkles className={`w-5 h-5 ${themeStyles.fabIcon} fill-current`} /></div></div></button>
+                    <button onClick={() => setIsChatOpen(true)} className="fixed bottom-8 right-6 z-40 w-24 h-24 hover:scale-110 active:scale-90 group"><div className="animate-float"><LiquidBucket theme={settings.theme} isFab={true} percent={65} label={settings.theme === 'moon' ? "" : "JK"} /><div className={`absolute top-0 right-0 bg-white rounded-full p-2 shadow-md border-2 ${themeStyles.fabBorder}`}><Sparkles className={`w-5 h-5 ${themeStyles.fabIcon} fill-current`} /></div></div></button>
                 ) : (
-                    <button data-tour="add-btn" onClick={() => { setEditingItem(null); setIsAddModalOpen(true); }} className="fixed bottom-8 right-6 z-40 w-24 h-24 hover:scale-110 active:scale-90 group"><div className="animate-float"><LiquidBucket theme={settings.theme} isFab={true} percent={stats.percent} /><div className={`absolute top-0 right-0 bg-white rounded-full p-1 shadow-md border-2 ${themeStyles.fabBorder}`}><Plus className={`w-6 h-6 ${themeStyles.fabIcon} stroke-[3]`} /></div></div></button>
+                    <button data-tour="add-btn" onClick={() => { setEditingItem(null); setIsAddModalOpen(true); }} className="fixed bottom-8 right-6 z-40 w-24 h-24 hover:scale-110 active:scale-90 group"><div className="animate-float"><LiquidBucket theme={settings.theme} isFab={true} percent={stats.percent} label={settings.theme === 'moon' ? "" : "JK"} /><div className={`absolute top-0 right-0 bg-white rounded-full p-1 shadow-md border-2 ${themeStyles.fabBorder}`}><Plus className={`w-6 h-6 ${themeStyles.fabIcon} stroke-[3]`} /></div></div></button>
                 )}
             </>
         )}

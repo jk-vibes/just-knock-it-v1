@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, CheckCircle2, Trash2, Calendar, Route, Image as ImageIcon, Snowflake, Flag } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { MapPin, Navigation, CheckCircle2, Trash2, Calendar, Route, Image as ImageIcon, Snowflake, Flag, ListChecks, Map as MapIcon, BookOpen, Moon } from 'lucide-react';
 import { BucketItem, Coordinates, Theme, TravelMode, DistanceUnit } from '../types';
 import { calculateDistance, formatDistance } from '../utils/geo';
 import { CategoryIcon } from './CategoryIcon';
@@ -26,6 +26,12 @@ const ThemeBackgroundIcon = ({ theme }: { theme?: Theme }) => {
     if (!theme) return null;
     
     switch(theme) {
+        case 'moon':
+            return (
+                <div className="absolute -bottom-6 -right-6 w-32 h-32 opacity-[0.1] pointer-events-none z-0 animate-float text-zinc-600">
+                    <Moon className="w-full h-full fill-current" />
+                </div>
+            );
         case 'batman':
             return (
                 <div className="absolute -bottom-4 -right-2 w-36 h-24 opacity-[0.15] pointer-events-none rotate-[-15deg] z-0 animate-float">
@@ -66,17 +72,19 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
   const SWIPE_THRESHOLD = 80;
   const hasCoords = item.coordinates && item.coordinates.latitude !== 0;
 
-  const handleNavigate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (hasCoords) {
-      const mode = travelMode === 'bicycling' ? 'bicycling' : travelMode;
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${item.coordinates!.latitude},${item.coordinates!.longitude}&travelmode=${mode}`;
-      window.open(url, '_blank');
-    }
-  };
-
   const getStyles = () => {
       switch (theme) {
+          case 'moon':
+              return {
+                  card: 'bg-[#18181b] backdrop-blur-md border-white/5 shadow-2xl shadow-black/50',
+                  text: 'text-white',
+                  subText: 'text-zinc-500',
+                  checkChecked: 'text-zinc-400',
+                  checkUnchecked: 'border-white/20 hover:border-zinc-400',
+                  tagPill: 'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10',
+                  planBtn: 'text-zinc-300 bg-white/5 hover:bg-white/10 hover:scale-110 shadow-sm border border-white/10',
+                  titleCompleted: 'text-white/30'
+              };
           case 'marvel':
               return {
                   card: 'bg-gradient-to-br from-white via-slate-50 to-blue-50 border-slate-200',
@@ -84,13 +92,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                   subText: 'text-slate-500',
                   checkChecked: 'text-green-500',
                   checkUnchecked: 'border-slate-400 hover:border-blue-500',
-                  pill: 'bg-white/80 border-slate-200 text-slate-600 hover:bg-white',
                   tagPill: 'bg-red-50 text-red-700 border-red-100 hover:bg-red-100',
-                  interestPill: 'text-slate-600 bg-slate-50 border-slate-100 hover:bg-slate-100',
-                  icon: 'text-blue-600',
-                  shareBtn: 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:scale-110',
-                  navBtn: 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100 hover:scale-110',
-                  imgBtn: 'bg-purple-50 border-purple-100 text-purple-600 hover:bg-purple-100 hover:scale-110',
+                  planBtn: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:scale-110',
                   titleCompleted: 'text-slate-400'
               };
           case 'elsa':
@@ -100,13 +103,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                   subText: 'text-cyan-600/80',
                   checkChecked: 'text-orange-500', 
                   checkUnchecked: 'border-cyan-300 hover:border-orange-400',
-                  pill: 'bg-cyan-50/50 border-cyan-100 text-cyan-700 hover:bg-cyan-100',
                   tagPill: 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100', 
-                  interestPill: 'text-cyan-600 bg-cyan-50/50 border-cyan-100 hover:bg-cyan-100',
-                  icon: 'text-orange-500', 
-                  shareBtn: 'text-orange-500 bg-orange-50 hover:bg-orange-100 hover:scale-110', 
-                  navBtn: 'bg-sky-50 border-sky-100 text-sky-600 hover:bg-sky-100 hover:scale-110',
-                  imgBtn: 'bg-indigo-50 border-indigo-100 text-indigo-500 hover:bg-indigo-100 hover:scale-110',
+                  planBtn: 'text-orange-600 bg-orange-50 hover:bg-orange-100 hover:scale-110',
                   titleCompleted: 'text-cyan-900/40'
               };
           case 'batman':
@@ -117,13 +115,8 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                   subText: 'text-gray-300',
                   checkChecked: 'text-green-500',
                   checkUnchecked: 'border-gray-500 hover:border-gray-300',
-                  pill: 'bg-gray-800/80 border-gray-700 text-gray-300 hover:bg-gray-700',
                   tagPill: 'bg-yellow-900/20 text-yellow-500 border-yellow-900/30 hover:bg-yellow-900/40',
-                  interestPill: 'text-gray-400 bg-gray-800 border-gray-700 hover:bg-gray-700',
-                  icon: 'text-red-500',
-                  shareBtn: 'text-blue-400 hover:bg-slate-700 hover:scale-110',
-                  navBtn: 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:scale-110',
-                  imgBtn: 'bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20 hover:scale-110',
+                  planBtn: 'text-yellow-400 hover:bg-gray-800 hover:scale-110',
                   titleCompleted: 'text-gray-500'
               };
       }
@@ -165,6 +158,18 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
       e.stopPropagation();
       onDelete(item.id);
       setOffsetX(0);
+  };
+
+  const renderPlanIcon = () => {
+    if (item.type === 'goal') return <BookOpen className="w-4 h-4" />;
+    if (item.type === 'roadtrip') return <Route className="w-4 h-4" />;
+    return <MapIcon className="w-4 h-4" />;
+  };
+
+  const getPlanButtonTitle = () => {
+    if (item.type === 'goal') return "View Learning Path";
+    if (item.type === 'roadtrip') return "View Route Stops";
+    return "View City Itinerary";
   };
 
   return (
@@ -213,22 +218,20 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                                 {item.title}
                             </h3>
                             {item.dueDate && !item.completed && (
-                                <div className="flex items-center gap-1 text-[9px] font-black text-blue-500 uppercase tracking-widest animate-pulse">
+                                <div className="flex items-center gap-1 text-[9px] font-black text-red-500 uppercase tracking-widest animate-pulse">
                                     <Flag className="w-2.5 h-2.5" />
                                     Target: {formatDate(item.dueDate)}
                                 </div>
                             )}
                         </div>
                         
-                        {item.type !== 'goal' && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onPlanTrip(item); }} 
-                                className={`p-1.5 rounded-full transition-all shrink-0 -mt-1 -mr-1 ${s.shareBtn}`}
-                                title="Plan Trip"
-                            >
-                                <Route className="w-4 h-4" />
-                            </button>
-                        )}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onPlanTrip(item); }} 
+                            className={`p-1.5 rounded-full transition-all shrink-0 -mt-1 -mr-1 ${s.planBtn}`}
+                            title={getPlanButtonTitle()}
+                        >
+                            {renderPlanIcon()}
+                        </button>
                     </div>
 
                     {!isCompact && (
@@ -248,60 +251,14 @@ export const BucketListCard: React.FC<BucketListCardProps> = ({
                                     </button>
                                 )}
                                 {item.bestTimeToVisit && (
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 flex items-center gap-1 animate-in fade-in slide-in-from-left duration-700">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-white/5 border-white/10 text-zinc-400 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
                                         {item.bestTimeToVisit}
                                     </span>
                                 )}
-                                {item.interests && item.interests.map((interest, i) => (
-                                    <button
-                                        key={interest}
-                                        onClick={(e) => { e.stopPropagation(); onSearch(interest); }}
-                                        className={`px-2 py-0.5 rounded-full text-[9px] font-medium border transition-all duration-300 ${s.interestPill} active:scale-95 animate-in fade-in duration-700`}
-                                        style={{ animationDelay: `${i * 100}ms` }}
-                                    >
-                                        #{interest}
-                                    </button>
-                                ))}
                             </div>
                         </div>
                     )}
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {item.locationName && (
-                            <div className={`flex items-center gap-1 px-2 py-1 rounded-md border max-w-[150px] transition-all duration-300 ${s.pill} group-hover:shadow-sm`}>
-                                <span className="text-[10px] font-bold truncate">
-                                    {item.locationName}
-                                </span>
-                            </div>
-                        )}
-
-                        {userLocation && item.coordinates && (
-                            <div className={`flex items-center gap-1 px-2 py-1 rounded-md border transition-all duration-300 ${s.pill} group-hover:shadow-sm`}>
-                                <span className="text-[10px] font-bold">
-                                    {formatDistance(calculateDistance(userLocation, item.coordinates), distanceUnit as DistanceUnit)}
-                                </span>
-                            </div>
-                        )}
-                        
-                        {hasCoords && (
-                            <button 
-                                onClick={handleNavigate}
-                                className={`p-1 border rounded-md transition-all duration-300 ${s.navBtn}`}
-                                title={`Navigate (${travelMode})`}
-                            >
-                                <Navigation className="w-3 h-3" />
-                            </button>
-                        )}
-
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onViewImages(item); }}
-                            className={`p-1 border rounded-md transition-all duration-300 ${s.imgBtn}`}
-                            title="Images"
-                        >
-                            <ImageIcon className="w-3 h-3" />
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

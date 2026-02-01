@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect } from 'react';
-import { LogOut, User as UserIcon, Settings, Shield, X } from 'lucide-react';
+import { LogOut, User as UserIcon, Shield, X } from 'lucide-react';
 import { User, Theme } from '../types';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -9,10 +9,9 @@ interface ProfileMenuProps {
   theme: Theme;
   onLogout: () => void;
   onClose: () => void;
-  onOpenSettings: () => void;
 }
 
-export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, theme, onLogout, onClose, onOpenSettings }) => {
+export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, theme, onLogout, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,17 +86,6 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, theme, onLogout,
 
       {/* Menu Options */}
       <div className="p-2">
-        <button 
-          type="button"
-          onClick={() => { onOpenSettings(); onClose(); }}
-          className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group ${s.hover}`}
-        >
-          <div className={`p-2 rounded-xl bg-gray-50 dark:bg-gray-800 group-hover:scale-110 transition-transform`}>
-            <Settings className="w-4 h-4 text-gray-400" />
-          </div>
-          <span className={`text-xs font-bold ${s.text}`}>Preferences</span>
-        </button>
-
         <button 
           type="button"
           onClick={handleLogoutClick}
